@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mic } from "lucide-react";
 import { useLocation } from "wouter";
 import { voicePending } from "@/lib/voice-pending";
+import { isNativeApp } from "@/lib/api-base";
 
 const NUM_BARS = 34;
 
@@ -69,6 +70,10 @@ export function VoiceOrbOverlay({ onClose }: { onClose: () => void }) {
   }, [stopBarAnim, navigate, onClose]);
 
   const startListening = useCallback(() => {
+    if (isNativeApp()) {
+      finishAndNavigate("");
+      return;
+    }
     setPhase("listening");
     startBarAnim();
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;

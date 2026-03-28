@@ -252,12 +252,9 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`${getApiBase()}/quran/surah/${surah.id}`)
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(data => {
+
+    async function fetchSurah(): Promise<void> {
+      const parseSurah = (data: { code: number; data: { ayahs: Ayah[] } }) => {
         if (data.code === 200) {
           let list: Ayah[] = data.data.ayahs;
           if (surah.id !== 1 && surah.id !== 9) {
@@ -268,11 +265,34 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
           }
           setAyahs(list);
         } else {
-          setError(`API error: ${data.code}`);
+          throw new Error(`API error: ${data.code}`);
         }
-      })
-      .catch(e => setError(`Fetch failed: ${e.message}`))
-      .finally(() => setLoading(false));
+      };
+
+      // Primary: app's own API proxy (caches results)
+      try {
+        const r = await fetch(`${getApiBase()}/quran/surah/${surah.id}`, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
+        parseSurah(data);
+        return;
+      } catch (primaryErr) {
+        console.warn("[Quran] Primary API failed, trying CDN fallback:", primaryErr);
+      }
+
+      // Fallback: alquran.cloud directly (works on native when server unreachable)
+      try {
+        const r = await fetch(`https://api.alquran.cloud/v1/surah/${surah.id}/quran-uthmani`, { signal: AbortSignal.timeout(12000) });
+        if (!r.ok) throw new Error(`CDN HTTP ${r.status}`);
+        const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
+        parseSurah(data);
+      } catch (fallbackErr) {
+        setError(`تعذّر تحميل السورة — تحقق من الاتصال بالإنترنت`);
+        console.error("[Quran] CDN fallback also failed:", fallbackErr);
+      }
+    }
+
+    fetchSurah().finally(() => setLoading(false));
   }, [surah.id]);
 
   const playAyah = useCallback((idx: number) => {

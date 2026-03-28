@@ -1,6 +1,7 @@
 // ── Notification Settings Types ───────────────────────────────────────────────
 
-import { getApiBase } from "./api-base";
+import { getApiBase, isNativeApp } from "./api-base";
+import { scheduleLocalNotifications, requestLocalNotifPermission, type ScheduledItem } from "./native-notifications";
 
 export interface PrayerNotifSettings {
   fajr: boolean;
@@ -108,12 +109,22 @@ export function saveSettings(s: NotificationSettings) {
 // ── Permission ────────────────────────────────────────────────────────────────
 
 export async function requestPermission(): Promise<NotificationPermission> {
+  if (isNativeApp()) {
+    const granted = await requestLocalNotifPermission();
+    const result: NotificationPermission = granted ? "granted" : "denied";
+    try { localStorage.setItem("native_notif_permission", result); } catch {}
+    return result;
+  }
   if (!("Notification" in window)) return "denied";
   if (Notification.permission === "granted") return "granted";
   return await Notification.requestPermission();
 }
 
 export function getPermission(): NotificationPermission {
+  if (isNativeApp()) {
+    const stored = localStorage.getItem("native_notif_permission");
+    return (stored as NotificationPermission) ?? "default";
+  }
   if (!("Notification" in window)) return "denied";
   return Notification.permission;
 }
@@ -548,12 +559,40 @@ async function scheduleServerPush(notifs: { tag: string; title: string; body: st
 // ── Main scheduling entry point ───────────────────────────────────────────────
 
 export async function scheduleAll(settings: NotificationSettings): Promise<void> {
-  if (!settings.enabled || getPermission() !== "granted") return;
+  if (!settings.enabled) return;
+
+  const notifs = await buildScheduledNotifications(settings);
+
+  if (isNativeApp()) {
+    const granted = getPermission();
+    if (granted !== "granted") {
+      const result = await requestPermission();
+      if (result !== "granted") return;
+    }
+    const items: ScheduledItem[] = notifs.map((n, i) => ({
+      id: hashTag(n.tag) + i,
+      title: n.title,
+      body: n.body,
+      fireAt: new Date(n.fireAt),
+      url: n.url,
+    }));
+    await scheduleLocalNotifications(items);
+    void scheduleServerPush(notifs);
+    return;
+  }
+
+  if (getPermission() !== "granted") return;
   if (!("serviceWorker" in navigator)) return;
   await navigator.serviceWorker.ready;
-  const notifs = await buildScheduledNotifications(settings);
-  // Schedule server-side push jobs so notifications fire even when app is closed
   void scheduleServerPush(notifs);
+}
+
+function hashTag(tag: string): number {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) {
+    h = (Math.imul(31, h) + tag.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h) % 100000 + 1;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function

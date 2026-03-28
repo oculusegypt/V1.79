@@ -14,6 +14,60 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 }
 
+// ── Firebase Admin (FCM) ─────────────────────────────────────────────────────
+
+type FirebaseApp = {
+  messaging: () => {
+    send: (msg: object) => Promise<string>;
+  };
+};
+
+let firebaseApp: FirebaseApp | null = null;
+
+async function getFirebaseApp(): Promise<FirebaseApp | null> {
+  if (firebaseApp) return firebaseApp;
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountJson) return null;
+  try {
+    const admin = await import("firebase-admin");
+    if (!admin.default.apps.length) {
+      const serviceAccount = JSON.parse(serviceAccountJson) as object;
+      admin.default.initializeApp({
+        credential: admin.default.credential.cert(serviceAccount as Parameters<typeof admin.default.credential.cert>[0]),
+      });
+    }
+    firebaseApp = admin.default.app() as unknown as FirebaseApp;
+    return firebaseApp;
+  } catch (e) {
+    console.error("[FCM] Firebase Admin init failed:", e);
+    return null;
+  }
+}
+
+async function sendFcmNotification(token: string, title: string, body: string, url: string): Promise<boolean> {
+  const app = await getFirebaseApp();
+  if (!app) return false;
+  try {
+    await app.messaging().send({
+      token,
+      notification: { title, body },
+      data: { url },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "prayer",
+          sound: "default",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        },
+      },
+    });
+    return true;
+  } catch (e) {
+    console.error("[FCM] Send failed for token:", e);
+    return false;
+  }
+}
+
 // GET /push/vapid-public-key
 router.get("/vapid-public-key", (_req, res) => {
   if (!VAPID_PUBLIC_KEY) {
@@ -105,39 +159,49 @@ export async function sendDuePushJobs() {
   if (dueJobs.length === 0) return;
 
   for (const job of dueJobs) {
+    let sent = false;
+
+    // 1. Try native FCM push (Android APK users)
+    const fcmTokens = await db.query.pushFcmTokensTable.findMany({
+      where: eq(pushFcmTokensTable.sessionId, job.sessionId),
+    });
+    for (const fcmRow of fcmTokens) {
+      const ok = await sendFcmNotification(fcmRow.token, job.title, job.body, job.url);
+      if (ok) sent = true;
+    }
+
+    // 2. Try Web Push (PWA/browser users)
     const sub = await db.query.pushSubscriptionsTable.findFirst({
       where: eq(pushSubscriptionsTable.sessionId, job.sessionId),
     });
-    if (!sub) {
-      await db
-        .update(pushJobsTable)
-        .set({ sent: true })
-        .where(eq(pushJobsTable.id, job.id));
-      continue;
-    }
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify({
-          title: job.title,
-          body: job.body,
-          url: job.url,
-          tag: `job-${job.id}`,
-        })
-      );
-    } catch (err: unknown) {
-      const status = (err as { statusCode?: number }).statusCode;
-      if (status === 410 || status === 404) {
-        await db
-          .delete(pushSubscriptionsTable)
-          .where(eq(pushSubscriptionsTable.sessionId, job.sessionId));
+    if (sub && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify({
+            title: job.title,
+            body: job.body,
+            url: job.url,
+            tag: `job-${job.id}`,
+          })
+        );
+        sent = true;
+      } catch (err: unknown) {
+        const status = (err as { statusCode?: number }).statusCode;
+        if (status === 410 || status === 404) {
+          await db
+            .delete(pushSubscriptionsTable)
+            .where(eq(pushSubscriptionsTable.sessionId, job.sessionId));
+        }
       }
-    } finally {
-      await db
-        .update(pushJobsTable)
-        .set({ sent: true })
-        .where(eq(pushJobsTable.id, job.id));
     }
+
+    void sent;
+
+    await db
+      .update(pushJobsTable)
+      .set({ sent: true })
+      .where(eq(pushJobsTable.id, job.id));
   }
 }
 
