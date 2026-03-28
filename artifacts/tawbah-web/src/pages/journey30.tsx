@@ -1256,14 +1256,6 @@ export default function Journey30() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      setLocation("/login");
-    }
-  }, [authLoading, user, setLocation]);
-
-  if (!authLoading && !user) return null;
-
   const sessionId = getSessionId();
   const queryClient = useQueryClient();
   const [showRestoreCode, setShowRestoreCode] = useState(false);
@@ -1317,6 +1309,14 @@ export default function Journey30() {
       }, 80);
     },
   });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setLocation("/login");
+    }
+  }, [authLoading, user, setLocation]);
+
+  if (!authLoading && !user) return null;
 
   if (isLoading) {
     return (
