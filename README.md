@@ -183,6 +183,56 @@
 
 ---
 
+## 📱 Android Push Notifications (Capacitor + FCM) — ملاحظات للمطورين
+
+### المتطلبات
+- مشروع Android داخل `artifacts/tawbah-web/android/`
+- ملف Firebase `google-services.json` داخل `artifacts/tawbah-web/android/app/`
+
+### نقاط مهمة تم إصلاحها
+- توافق الإصدارات: يجب أن تكون `@capacitor/core` و `@capacitor/push-notifications` على نفس major version.
+- صلاحية Android 13+: يجب وجود `android.permission.POST_NOTIFICATIONS` داخل `AndroidManifest.xml`.
+- تحسين منطق التسجيل على العميل (Capacitor): التأكد من وجود البلجن native، إضافة الـ listeners قبل `register()`، وتسجيل مراحل/أخطاء التشخيص في `localStorage`.
+- Backend لاستقبال توكن FCM من التطبيق: endpoint لتسجيل التوكن + جدول لحفظه.
+
+### ملفات/مناطق تم تعديلها (مرجع سريع)
+- `artifacts/tawbah-web/package.json` (إصدارات Capacitor)
+- `artifacts/tawbah-web/src/lib/capacitor-push.ts` (تحميل البلجن + التسجيل + حفظ التوكن)
+- `artifacts/tawbah-web/src/context/NotificationsContext.tsx` (تفعيل الإشعارات على native)
+- `artifacts/tawbah-web/src/pages/notifications.tsx` (تشخيص/عرض الحالة ومسح الأخطاء القديمة)
+- `artifacts/tawbah-web/android/app/src/main/AndroidManifest.xml` (صلاحيات Android)
+- `artifacts/tawbah-web/android/app/build.gradle` (رفع `versionCode` عند الحاجة لضمان تثبيت APK جديد)
+- `lib/db/src/schema/tawbah.ts` + `artifacts/api-server/src/routes/push.ts` (تخزين توكنات FCM واستقبالها)
+
+### أوامر بناء APK (محليًا)
+من جذر المشروع:
+```bash
+pnpm -C artifacts/tawbah-web build
+```
+ثم:
+```bash
+cd artifacts/tawbah-web
+npx cap sync android
+```
+ثم بناء APK debug (حسب السكربت الموجود في المشروع):
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-apk.ps1
+```
+
+### خطوات اختبار على الجهاز
+- احذف التطبيق من الهاتف (Uninstall كامل) ثم ثبّت الـ APK الجديد.
+- افتح صفحة الإشعارات واضغط تفعيل.
+- راقب القيم التشخيصية (داخل واجهة التطبيق):
+  - `push_stage`
+  - `push_last_error`
+  - `fcm_token`
+
+### Endpoint تسجيل توكن FCM
+- `POST /api/push/fcm-token` body:
+  - `sessionId`, `token`, `platform`
+
+---
+
 ### ⚖️ الكفارة `/kaffarah`
 - قائمة بكفارات الذنوب وشروطها الشرعية
 - تتبع تنفيذ كفارة كل ذنب
