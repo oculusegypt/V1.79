@@ -11,7 +11,8 @@ import { getSessionId } from "@/lib/session";
 import { isNativeApp, getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation } from "wouter";
-import { getAuthHeader } from "@/lib/auth-client";
+import { getAuthHeader, setAuthToken } from "@/lib/auth-client";
+import { supabase } from "@/lib/supabase";
 import { getSelectedSins, CATEGORY_META, type Sin } from "@/lib/sins-data";
 import { PageHeader } from "@/components/PageHeader";
 import { setAudioSrc } from "@/lib/native-audio";
@@ -1267,12 +1268,23 @@ export default function Journey30() {
   const { data, isLoading, isError, refetch } = useQuery<JourneyData>({
     queryKey: ["journey30", sessionId],
     queryFn: async () => {
+      const doFetch = (authHeader: Record<string, string>) =>
+        fetchWithTimeout(`${getApiBase()}/journey30`, { headers: authHeader });
+
       try {
-        const res = await fetchWithTimeout(`${getApiBase()}/journey30`, {
-          headers: {
-            ...getAuthHeader(),
-          },
-        });
+        let res = await doFetch(getAuthHeader());
+
+        if (res.status === 401) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData.session) {
+            setAuthToken(refreshData.session.access_token);
+            res = await doFetch(getAuthHeader());
+          } else {
+            setLocation("/login");
+            throw new Error("session_expired");
+          }
+        }
+
         if (!res.ok) throw new Error("Failed to fetch journey");
         return res.json() as Promise<JourneyData>;
       } catch (e) {
@@ -1284,7 +1296,7 @@ export default function Journey30() {
     },
     enabled: !!sessionId && !!user,
     refetchInterval: false,
-    retry: 1,
+    retry: false,
   });
 
   const completeMutation = useMutation({
