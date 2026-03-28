@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { journey30Table, journey30TasksTable } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
-import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
+import { optionalAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -39,9 +39,17 @@ const JOURNEY_DAYS: Array<{ day: number; title: string; tasks: string[]; verse: 
   { day: 30, title: "يوم الختام المجيد", tasks: ["احتفل بهذا الإنجاز العظيم", "تصدّق بصدقة شكراً لله", "جدّد عهدك مع الله للمستقبل"], verse: "﴿فَأَمَّا مَن تَابَ وَآمَنَ وَعَمِلَ صَالِحًا فَعَسَى أَن يَكُونَ مِنَ الْمُفْلِحِينَ﴾" },
 ];
 
-router.get("/journey30", requireAuth, async (req, res) => {
+function getUserId(req: AuthenticatedRequest): string | null {
+  if (req.auth?.sub) return req.auth.sub;
+  const sessionId = (req.query.sessionId as string | undefined)
+    ?? (req.body as { sessionId?: string } | undefined)?.sessionId;
+  return sessionId ?? null;
+}
+
+router.get("/journey30", optionalAuth, async (req, res) => {
   const aReq = req as AuthenticatedRequest;
-  const userId = aReq.auth!.sub;
+  const userId = getUserId(aReq);
+  if (!userId) return res.status(400).json({ error: "sessionId or auth token required" });
 
   const [rows, taskRows] = await Promise.all([
     db.query.journey30Table.findMany({
@@ -82,9 +90,10 @@ router.get("/journey30", requireAuth, async (req, res) => {
   });
 });
 
-router.post("/journey30/task-toggle", requireAuth, async (req, res) => {
+router.post("/journey30/task-toggle", optionalAuth, async (req, res) => {
   const aReq = req as AuthenticatedRequest;
-  const userId = aReq.auth!.sub;
+  const userId = getUserId(aReq);
+  if (!userId) return res.status(400).json({ error: "sessionId or auth token required" });
 
   const { dayNumber, taskIndex, completed } = req.body as {
     dayNumber: number; taskIndex: number; completed: boolean;
@@ -133,14 +142,14 @@ router.post("/journey30/task-toggle", requireAuth, async (req, res) => {
   const allDone = completedCount >= dayData.tasks.length;
 
   if (allDone) {
-    const existing = await db.query.journey30Table.findFirst({
+    const existingDay = await db.query.journey30Table.findFirst({
       where: and(
         eq(journey30Table.userId, userId),
         eq(journey30Table.dayNumber, dayNumber)
       ),
     });
 
-    if (!existing) {
+    if (!existingDay) {
       await db.insert(journey30Table).values({
         userId,
         dayNumber,
@@ -154,9 +163,10 @@ router.post("/journey30/task-toggle", requireAuth, async (req, res) => {
   return res.json({ success: true, allDone });
 });
 
-router.post("/journey30/complete", requireAuth, async (req, res) => {
+router.post("/journey30/complete", optionalAuth, async (req, res) => {
   const aReq = req as AuthenticatedRequest;
-  const userId = aReq.auth!.sub;
+  const userId = getUserId(aReq);
+  if (!userId) return res.status(400).json({ error: "sessionId or auth token required" });
 
   const { dayNumber } = req.body as { dayNumber: number };
   if (!dayNumber) return res.status(400).json({ error: "dayNumber required" });

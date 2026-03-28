@@ -6,46 +6,75 @@ export type AuthTokenPayload = {
   email?: string;
 };
 
-function getSupabaseUrl() {
+function getSupabaseUrl(): string | null {
   const url = process.env.SUPABASE_URL;
-  if (!url) throw new Error("SUPABASE_URL must be set");
-  return url.replace(/\/$/, "");
-}
-
-function getSupabaseIssuer() {
-  return `${getSupabaseUrl()}/auth/v1`;
+  return url ? url.replace(/\/$/, "") : null;
 }
 
 function getSupabaseAudience() {
   return process.env.SUPABASE_JWT_AUD ?? "authenticated";
 }
 
-const jwks = createRemoteJWKSet(new URL(`${getSupabaseUrl()}/auth/v1/keys`));
+let _jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
-async function verifySupabaseJwt(token: string): Promise<AuthTokenPayload> {
-  const { payload } = await jwtVerify(token, jwks, {
-    issuer: getSupabaseIssuer(),
-    audience: getSupabaseAudience(),
-  });
+function getJwks(): ReturnType<typeof createRemoteJWKSet> | null {
+  if (_jwks) return _jwks;
+  const supabaseUrl = getSupabaseUrl();
+  if (!supabaseUrl) return null;
+  try {
+    _jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/keys`));
+    return _jwks;
+  } catch {
+    return null;
+  }
+}
 
-  const p = payload as JWTPayload & { email?: string };
-  if (!p.sub) throw new Error("Invalid token payload");
-  return { sub: p.sub, email: p.email };
+async function verifySupabaseJwt(token: string): Promise<AuthTokenPayload | null> {
+  const jwks = getJwks();
+  if (!jwks) return null;
+  const supabaseUrl = getSupabaseUrl();
+  if (!supabaseUrl) return null;
+  try {
+    const { payload } = await jwtVerify(token, jwks, {
+      issuer: `${supabaseUrl}/auth/v1`,
+      audience: getSupabaseAudience(),
+    });
+    const p = payload as JWTPayload & { email?: string };
+    if (!p.sub) return null;
+    return { sub: p.sub, email: p.email };
+  } catch {
+    return null;
+  }
 }
 
 export type AuthenticatedRequest = Request & { auth?: AuthTokenPayload };
 
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const header = req.headers.authorization;
-    if (!header || !header.toLowerCase().startsWith("bearer ")) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const token = header.slice("bearer ".length).trim();
-    const payload = await verifySupabaseJwt(token);
-    req.auth = payload;
-    return next();
-  } catch {
+  const header = req.headers.authorization;
+  if (!header || !header.toLowerCase().startsWith("bearer ")) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  const token = header.slice("bearer ".length).trim();
+  const payload = await verifySupabaseJwt(token);
+  if (!payload) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  req.auth = payload;
+  return next();
+}
+
+export async function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+  try {
+    const header = req.headers.authorization;
+    if (header && header.toLowerCase().startsWith("bearer ")) {
+      const token = header.slice("bearer ".length).trim();
+      const payload = await verifySupabaseJwt(token);
+      if (payload) req.auth = payload;
+    }
+  } catch {}
+  return next();
+}
+
+export function hashPassword(_password: string): string {
+  return "";
 }

@@ -931,7 +931,7 @@ function DayTaskList({
       const res = await fetch(`${getApiBase()}/journey30/task-toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
-        body: JSON.stringify({ dayNumber: day.day, taskIndex, completed }),
+        body: JSON.stringify({ dayNumber: day.day, taskIndex, completed, sessionId }),
       });
       return res.json() as Promise<{ success: boolean; allDone: boolean }>;
     },
@@ -1269,7 +1269,7 @@ export default function Journey30() {
     queryKey: ["journey30", sessionId],
     queryFn: async () => {
       const doFetch = (authHeader: Record<string, string>) =>
-        fetchWithTimeout(`${getApiBase()}/journey30`, { headers: authHeader });
+        fetchWithTimeout(`${getApiBase()}/journey30?sessionId=${encodeURIComponent(sessionId ?? "")}`, { headers: authHeader });
 
       try {
         let res = await doFetch(getAuthHeader());
@@ -1280,8 +1280,7 @@ export default function Journey30() {
             setAuthToken(refreshData.session.access_token);
             res = await doFetch(getAuthHeader());
           } else {
-            setLocation("/login");
-            throw new Error("session_expired");
+            res = await doFetch({});
           }
         }
 
@@ -1294,7 +1293,7 @@ export default function Journey30() {
         throw e;
       }
     },
-    enabled: !!sessionId && !!user,
+    enabled: !!sessionId,
     refetchInterval: false,
     retry: false,
   });
@@ -1304,7 +1303,7 @@ export default function Journey30() {
       const res = await fetch(`${getApiBase()}/journey30/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
-        body: JSON.stringify({ dayNumber }),
+        body: JSON.stringify({ dayNumber, sessionId }),
       });
       return res.json();
     },
@@ -1662,7 +1661,7 @@ export default function Journey30() {
 
             <DayTaskList
               day={currentDay}
-              sessionId={sessionId}
+              sessionId={sessionId ?? ""}
               onAllDone={() => setLocalAllDone(true)}
             />
           </>
