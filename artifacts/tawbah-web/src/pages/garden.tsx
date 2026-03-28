@@ -3,10 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Share2 } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-
-function getSessionId(): string {
-  return localStorage.getItem("tawbah_session") ?? "guest";
-}
+import { getApiBase } from "@/lib/api-base";
+import { getAuthHeader } from "@/lib/auth-client";
+import { getSessionId } from "@/lib/session";
 
 const STAGES = [
   { min: 0,    max: 49,   emoji: "🌱", name: "بذرة",    nameEn: "Seed",     color: "#a7f3d0", bg: "#022c22", desc: "رحلتك بدأت — كل ذكر يُحيي قلبك",         size: 80  },
@@ -67,7 +66,7 @@ export default function Garden() {
   const { data: j30 } = useQuery<Journey30Summary>({
     queryKey: ["journey30-garden", sessionId],
     queryFn: async () => {
-      const res = await fetch(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`);
+      const res = await fetch(`${getApiBase()}/journey30`, { headers: { ...getAuthHeader() } });
       const data = await res.json();
       return { completedCount: data.completedCount ?? 0, streakDays: data.streakDays ?? 0 };
     },

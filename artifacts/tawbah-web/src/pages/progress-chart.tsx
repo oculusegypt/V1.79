@@ -11,6 +11,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { useQuery } from "@tanstack/react-query";
 import { useAppUserProgress, useAppDhikrCount, useAppHabits } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
+import { getApiBase } from "@/lib/api-base";
+import { getAuthHeader } from "@/lib/auth-client";
 import { BadgesSection } from "@/components/badges";
 
 interface DayRecord {
@@ -394,7 +396,7 @@ function useJourney30Data() {
     queryKey: ["/api/journey30-progress"],
     queryFn: async () => {
       const sessionId = getSessionId();
-      const res = await fetch(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`);
+      const res = await fetch(`${getApiBase()}/journey30`, { headers: { ...getAuthHeader() } });
       if (!res.ok) return { completedCount: 0, currentDay: 1 };
       return res.json() as Promise<{ completedCount: number; currentDay: number }>;
     },

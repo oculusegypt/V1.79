@@ -5,6 +5,8 @@ import { useAppUserProgress, useAppDhikrCount, useAppHabits } from "@/hooks/use-
 import { CircleDot, PenLine, TrendingUp, Heart, Sparkles, Flame, Star, ChevronDown, Bell, CheckCircle2, Route } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionId } from "@/lib/session";
+import { getApiBase } from "@/lib/api-base";
+import { getAuthHeader } from "@/lib/auth-client";
 
 // ─── General Daily Faith Tasks (shown when journey is NOT active) ─────────────
 
@@ -311,7 +313,7 @@ export function SoulMeter() {
   const { data: j30 } = useQuery<Journey30Summary>({
     queryKey: ["journey30-soul-meter", sessionId],
     queryFn: async () => {
-      const res = await fetch(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`);
+      const res = await fetch(`${getApiBase()}/journey30`, { headers: { ...getAuthHeader() } });
       const data = await res.json();
       return {
         completedCount: data.completedCount,
