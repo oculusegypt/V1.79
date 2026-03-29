@@ -1,0 +1,187 @@
+The user wants to:
+
+Split the large journey30.tsx page into separate files/components - one per day (30 pages/modals)
+
+Create a dedicated folder for the journey with its sub-components and styles
+
+All days should match the style of "day-one" (يوم الانطلاق - Day 1)
+
+Fix the Day Completion Celebration Banner:
+
+Change the title from "اليوم 1" to the actual day name (e.g., "يوم الانطلاق")
+Change button from "انطلق في رحلة ال 30 يوما" to "الانتقال إلى اليوم 2"
+Add a progress bar with a modern timeline style and icons to show journey progress in an expressive, motivating way
+
+Keep the "sins/kabair" panel visible across all days - it should expand to show steps when clicked (like day-one), then disappear after completion and display an encouraging message instead
+
+Style the day tasks section like day-one, with tasks getting highlighted after completion, followed by a motivational card showing an icon, day name, and verse, plus a button to advance to the next day
+
+Now I need to examine the current journey30.tsx structure to understand how it's organized and what needs to be refactored.
+
+دعني أفهم البنية الحالية بالكامل قبل الشروع في التنفيذ:
+
+Now I have a full picture of the journey30 page. Let me plan the refactoring:
+
+Create a folder artifacts/tawbah-web/src/pages/journey/ with:
+
+index.tsx - Main journey page (router/coordinator)
+types.ts - Shared TypeScript types
+data.ts - All 30 days data (JOURNEY_DAYS array)
+hooks.ts - Shared hooks (useJourneyData, etc.)
+components/ folder:
+DayView.tsx - Per-day view component (replaces the inline day view)
+DayProgress.tsx - Modern timeline progress bar
+DayTaskList.tsx - Task list component
+SinPanel.tsx - Sin integration panel
+CompletionBanner.tsx - Day completion celebration banner
+CompletionCard.tsx - Full-day completion card shown after tasks done
+RestoreCodePanel.tsx - Session restore
+SurahReader.tsx - Surah reading modal
+TaskHelpers.tsx - IstighfarCounter, PrayerButton, etc.
+Fix the completion banner to show properly when all tasks are done.
+
+Add a timeline progress bar with icons showing the journey timeline.
+
+After tasks done - show a completion card with the day name, a verse, and the "Go to next day" button.
+
+Sin panel - visible on all days, appears on click, disappears after journey completion with an encouraging message.
+
+The key changes needed: update the completion banner to use the day's actual title instead of the day number, and fix the next day button text to match the journey progression.
+
+Looking at the code, I need to check the completion message on line 1484 where it currently shows the day number, and verify the next button text is consistent throughout. The hero card text seems correct as is, but I should double-check the button labels to ensure they're using the proper Arabic phrasing for advancing through the journey. الآن أنا أفكر في كيفية تقسيم الملف إلى هيكل مجلدات منفصل، حيث سأنقل أنواع البيانات والثوابت والدوال المساعدة إلى ملفات مخصصة، ثم تقسيم المكونات إلى ملفات منفصلة مثل رأس الصفحة وشريط التقدم وبطاقة اليوم وقائمة المهام.
+
+الآن أبدأ في كتابة هذه الملفات، مع التركيز على تصميم شريط تقدم حديث يعرض خط زمني أفقي قابل للتمرير مع أيقونات الأيام، حيث تظهر الأيام المكتملة كدوائر خضراء مع علامة صح، واليوم الحالي مميز برمز خاص. Looking at the specific fixes needed: the completion banner title should use justCompleted.title instead of the current day format, the next button text needs to change to "الانتقال إلى اليوم", and I need to add an overlay card that shows after tasks are done with the day info, verse, and navigation button. The sin panel should remain visible throughout and display an encouraging message once the full journey completes. Let me start implementing these changes systematically across the refactored structure. Now I'm setting up the project structure with the necessary TypeScript files for the journey feature, including type definitions, data management, utility functions, and the main Surah reader component. awbah-web/src/pages/journey/components/RestoreCodePanel.tsx, thenDayHero.tsx, and finally the mainindex.tsxfile which will be much simpler after extracting these components. I'm planning to keepjourney30.tsx` as a simple re-export to maintain the existing routing rather than breaking it, though I should verify how the routing actually works for that file.
+
+Now I have a complete picture. Let me plan the architecture and start writing the files. Here's the plan:
+
+Create artifacts/tawbah-web/src/pages/journey/ folder with all the components
+The route in App.tsx will remain pointing to @/pages/journey30 which I'll update to re-export from the new folder
+Here's the detailed file structure:
+
+src/pages/journey/
+├── index.tsx               # Main page component
+├── types.ts                # Types
+├── data.ts                 # JOURNEY_DAYS 
+├── utils.ts                # fetchWithTimeout, buildNativeFallbackJourney
+└── components/
+    ├── SurahReader.tsx      # Surah reading (big component)
+    ├── TaskHelpers.tsx      # IstighfarCounter, PrayerButton, QuranPagesButton
+    ├── DayTaskList.tsx      # Day task list
+    ├── SinPanel.tsx         # Sin integration panel
+    ├── JourneyTimeline.tsx  # Modern timeline progress (new!)
+    ├── CompletionBanner.tsx # Day completion animation banner (fixed)
+    ├── CompletionCard.tsx   # After tasks done card (improved)
+    └── Rest
+Now I'm mapping out the key improvements I need to make across these components. The completion banner needs to display the day title dynamically, the next day button should show the specific day number, and I'm adding a modern horizontal timeline that visualizes progress with completed days marked with green checkmarks, the current day with an animated flame, and future days muted. The completion card will be a polished professional design showing a verse, icon, and day name with the next button. The sin panel stays consistent across all days but displays a liberation message when the full journey completes. I need to preserve all the complex SurahReader logic while implementing these updates.
+
+Let me organize the refactoring by tackling the simpler components first, then working up to the more intricate ones like the SurahReaderModal and the main task list. I'm breaking down the current file into distinct sections—utility functions and the modal, the surah button, task type helpers, the istighfar counter, prayer reminder button, quran viewer components, the day task list with individual task items, and the sin integration panel—so I can refactor each piece carefully while keeping all the existing functionality intact.
+
+The main Journey30 component is substantial at around 570 lines, so I need to think strategically about how to split it up. I'm planning to create separate files for types, data, utilities, and individual components like the surah reader, task helpers, and other specialized features to make the codebase more maintainable. I'm going to carefully write out all these component files, making sure to preserve the existing functionality while incorporating the new improvements I've planned.
+
+Now I have enough context to plan and implement the refactoring. Let me create the journey folder with all the components. I'll do this systematically, creating all files at once.
+
+Key things to preserve:
+
+All the Surah reading logic (complex)
+Task helpers (IstighfarCounter, Prayer, QuranPages)
+Sin panel logic
+All the API fetching logic
+Key improvements to add:
+
+Split files into journey/ folder
+
+Modern timeline progress bar
+
+Fix completion banner (show title not "اليوم 1")
+
+Better next button text
+
+After tasks done - show a beautiful completion card
+
+Setting up the folder structure with types, utilities, and component files for the Surah reader, task helpers, day task list, sin panel, and the new journey timeline.
+
+Now I'm extracting the core logic from the original journey30 file—pulling out the Surah length constants, utility functions for converting between local and global ayah numbers, helper functions to identify Bismillah ayahs, and the task-to-Surah mapping system that determines which passages correspond to each day's work.
+
+Next I need to build out the modal and button components for the Surah reader, then move into the task-specific helpers that handle Istighfar counting, prayer reminders, and Quran page tracking, along with their associated UI components. After that comes the day task list component that ties everything together, the Sin integration panel, and finally a new horizontal timeline to visualize the entire journey progression.
+
+For the completion banner and card, I'll extract those into their own components and make them more visually polished. The main index file will become much cleaner once everything's modularized—it'll just handle orchestration and pass data down to these specialized components.
+
+For the timeline specifically, I'm picturing a horizontal scrollable design where each day appears as a circle node: completed days show green with a checkmark, the current day pulses with the primary color and a flame icon, and upcoming days display as muted circles with their day numbers, with milestone markers sprinkled throughout.
+
+Let me start writing out all these files completely to preserve the logic.
+
+Defining the types first...
+
+Now I'm setting up the utility functions for fetching with timeout, building the fallback journey data, and converting numbers to Arabic-Indic numerals. The tricky part will be the SurahReader component since it has a lot of logic to handle carefully.
+
+Now I have a complete picture. Let me create the full folder structure with all the components:
+
+I have all the information I need. Now let me create all the files. This is a large task, let me write each file systematically.
+
+I'll create the following files:
+
+types.ts
+
+utils.ts
+
+components/SurahReader.tsx
+
+components/TaskHelpers.tsx
+
+components/DayTaskList.tsx
+
+components/SinPanel.tsx
+
+components/JourneyTimeline.tsx (NEW)
+
+components/CompletionBanner.tsx (fixed)
+
+components/CompletionCard.tsx (new improved)
+
+components/RestoreCodePanel.tsx
+
+index.tsx (main, slimmer)
+
+Then I'll update journey30.tsx to re-export from journey/index.tsx. I have enough context to write all the files while preserving the existing logic from the original code.
+
+Writing the files now...
+
+I have everything I need. Now let me build the full folder structure efficiently — writing all files in parallel batches:
+
+Optimized Agent memory
+Now let me create the component files. I'll create them in parallel batches.
+
+Let me write:
+
+SurahReader.tsx (complex - all the surah reading logic)
+TaskHelpers.tsx (all task type helpers + counters)
+RestoreCodePanel.tsx (session restore)
+These can all be done in parallel.
+
+Now let me create all the component files in parallel:
+
+Now let me create the most visual new components — the timeline and completion card — alongside the SurahReader:
+
+Now let me create the SurahReader and TaskHelpers components with the preserved logic:
+
+Now I have enough context to create all the remaining files. Let me continue creating the SurahReader and TaskHelpers components.
+
+For SurahReader, I need to read lines 517-571 to get the SurahButton component.
+
+Good, I have all the pieces I need. Let me create the remaining large components:
+
+Now I have all the pieces. Let me create the SurahReader and TaskHelpers components, and then the DayTaskList and main index.tsx.
+
+Continuing to create the remaining files. Let me create TaskHelpers.tsx and DayTaskList.tsx next:
+
+Good progress. Now let me create the DayTaskList and the main index.tsx. I also need to fix an issue in TaskHelpers.tsx - I imported toGlobalAyah from utils but it doesn't exist there. Let me fix that by using the one from SurahReader.tsx or just defining it directly. Actually, looking at the imports, I'm importing toGlobalAyah as _toGlobalAyah from SurahReader which exports it. But that creates a circular dependency with the SurahReader.tsx file. Let me fix this by moving toGlobalAyah to utils.ts.
+
+Let me update utils.ts to include toGlobalAyah:
+
+I need to fix the toGlobalAyah in utils.ts and fix the import in TaskHelpers:
+
+Now let me fix the TaskHelpers.tsx to use the correct imports from utils.ts instead of SurahReader.tsx:
+
+Also fix the SurahReader import:
+
+Now there's a duplicate toGlobalAyah in SurahReader.tsx - the file still has the old function definition. Let me remove it.
