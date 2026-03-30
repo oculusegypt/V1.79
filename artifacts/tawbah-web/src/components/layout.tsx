@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, CircleDot, ShieldAlert, BarChart2, HelpCircle, User2, X } from "lucide-react";
+import { Home, Calendar, CircleDot, ShieldAlert, BarChart2, HelpCircle, User2, X, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
@@ -91,6 +91,20 @@ export function Layout({ children }: { children: ReactNode }) {
   ];
 
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 280);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => { setShowScrollTop(false); }, [location]);
+
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const zakiHref = "/zakiy";
   const isZakiActive = location === zakiHref;
   const isSos = location === "/sos";
@@ -228,6 +242,27 @@ export function Layout({ children }: { children: ReactNode }) {
           <AnimatePresence>
             {voiceOpen && (
               <VoiceOrbOverlay onClose={() => setVoiceOpen(false)} />
+            )}
+          </AnimatePresence>
+
+          {/* Scroll-to-top button */}
+          <AnimatePresence>
+            {showScrollTop && (
+              <motion.button
+                key="scroll-top"
+                initial={{ opacity: 0, scale: 0.7, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.7, y: 10 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                whileTap={{ scale: 0.88 }}
+                onClick={scrollToTop}
+                className="fixed z-50 p-3 rounded-full bg-card border border-border shadow-lg shadow-black/10 hover:border-primary/40 hover:text-primary text-muted-foreground transition-colors"
+                style={{ bottom: "96px", right: "16px" }}
+                aria-label="الصعود للأعلى"
+                title="الصعود للأعلى"
+              >
+                <ChevronUp size={20} strokeWidth={2.2} />
+              </motion.button>
             )}
           </AnimatePresence>
 

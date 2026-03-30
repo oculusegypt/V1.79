@@ -444,12 +444,9 @@ export default function ZakiyPage() {
       </AnimatePresence>
 
       <div
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
+        className="flex-1 overflow-y-auto px-4 py-4 space-y-3 chat-scroll-area"
         style={{
-          backgroundImage: `
-            linear-gradient(180deg,#f0ede5 0%,#f7f5ef 50%,#f0ede5 100%),
-            url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23059669' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
-          `,
+          background: "var(--chat-bg, hsl(var(--muted)/0.3))",
         }}
       >
         <AnimatePresence initial={false}>
@@ -466,19 +463,16 @@ export default function ZakiyPage() {
                 <div
                   className={cn(
                     "max-w-[86%] rounded-2xl px-4 py-3.5",
-                    msg.role === "user" ? "text-white rounded-tl-[6px]" : "rounded-tr-[6px] text-stone-800"
+                    msg.role === "user"
+                      ? "text-white rounded-tl-[6px]"
+                      : "rounded-tr-[6px] text-foreground bot-bubble"
                   )}
                   style={msg.role === "user"
                     ? {
                         background: "linear-gradient(140deg,#059669,#0d9488)",
                         boxShadow: "0 4px 18px rgba(5,150,105,0.28), 0 1px 4px rgba(0,0,0,0.1)",
                       }
-                    : {
-                        background: "#ffffff",
-                        border: "1px solid rgba(0,0,0,0.06)",
-                        boxShadow: "0 2px 16px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)",
-                        borderRight: "3px solid rgba(5,150,105,0.25)",
-                      }
+                    : undefined
                   }
                 >
                   {msg.role === "bot" ? (
@@ -522,15 +516,7 @@ export default function ZakiyPage() {
         {loading && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-end gap-2.5">
             <ZakiyAvatar pulse />
-            <div
-              className="rounded-2xl rounded-tr-[6px] px-5 py-4"
-              style={{
-                background: "rgba(255,255,255,0.97)",
-                border: "1px solid rgba(5,150,105,0.1)",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04)",
-                borderRight: "3px solid rgba(5,150,105,0.3)",
-              }}
-            >
+            <div className="bot-bubble rounded-2xl rounded-tr-[6px] px-5 py-4">
               <div className="flex gap-[6px] items-end">
                 {[0, 1, 2].map((idx) => (
                   <motion.span
@@ -566,12 +552,9 @@ export default function ZakiyPage() {
         style={{ bottom: "8px" }}
       >
         <div
-          className="mx-2 rounded-2xl overflow-hidden"
+          className="mx-2 rounded-2xl overflow-hidden input-bar"
           style={{
-            background: "rgba(255,255,255,0.97)",
-            backdropFilter: "blur(20px)",
-            boxShadow: "0 -2px 0 rgba(0,0,0,0.04),0 -8px 24px rgba(0,0,0,0.08),0 4px 8px rgba(0,0,0,0.04)",
-            border: "1px solid rgba(0,0,0,0.07)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <AnimatePresence>
@@ -601,7 +584,7 @@ export default function ZakiyPage() {
                 "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
                 recording
                   ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-                  : "bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-700",
+                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground",
                 loading && "opacity-40 cursor-not-allowed"
               )}
             >
@@ -633,14 +616,12 @@ export default function ZakiyPage() {
                 disabled={loading || recording}
                 rows={1}
                 className={cn(
-                  "w-full resize-none rounded-xl px-3.5 py-2.5 text-[13.5px] text-stone-800",
-                  "border border-stone-200",
-                  "bg-stone-50",
-                  "placeholder:text-stone-400 placeholder:text-[12px]",
-                  "focus:outline-none focus:ring-2 focus:ring-teal-400/20 focus:border-teal-400",
-                  "focus:bg-white",
+                  "w-full resize-none rounded-xl px-3.5 py-2.5 text-[13.5px]",
+                  "border border-border/50 bg-muted/40 text-foreground",
+                  "placeholder:text-muted-foreground/60 placeholder:text-[12px]",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
+                  "focus:bg-background/80",
                   "max-h-32 overflow-y-auto leading-relaxed transition-all",
-                  "dark:bg-background dark:border-border/60 dark:text-foreground dark:focus:border-teal-500/50",
                   (loading || recording) && "opacity-50"
                 )}
                 style={{ minHeight: "42px" }}
@@ -658,18 +639,18 @@ export default function ZakiyPage() {
               className={cn(
                 "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
                 input.trim() && !loading && !recording
-                  ? "text-white shadow-md shadow-teal-500/30"
-                  : "bg-stone-100 text-stone-400 opacity-60 cursor-not-allowed"
+                  ? "text-white shadow-md shadow-primary/30"
+                  : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
               )}
               style={input.trim() && !loading && !recording ? {
-                background: "linear-gradient(135deg,#2dd4bf,#059669)",
+                background: "linear-gradient(135deg, var(--primary-soft, #2dd4bf), var(--primary, #059669))",
               } : undefined}
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} className="scale-x-[-1]" />}
             </button>
           </div>
 
-          <p className="text-center text-[10px] text-stone-400 pb-2">
+          <p className="text-center text-[10px] text-muted-foreground/60 pb-2">
             ما تقوله هنا آمن ومحفوظ بيننا فقط
           </p>
         </div>
