@@ -1,0 +1,337 @@
+
+
+You are working on an AI-driven Islamic application called "Tawbah".
+
+IMPORTANT ARCHITECTURE RULE:
+Do NOT treat pages as independent features.
+All existing routes are capabilities that must be orchestrated by a central AI system called "Zakiy".
+
+Your task is to refactor and extend the system into an AI-Orchestrated Architecture.
+
+## Core Concept
+
+Zakiy is the central decision engine that:
+
+* Understands user state
+* Detects risk
+* Assigns tasks
+* Redirects user to the correct capability (route)
+
+## Step 1: Create Core AI Service
+
+Create a service:
+`/src/core/zakiy-engine.ts`
+
+It should:
+
+* Accept user context
+* Return:
+
+  * message
+  * action (route redirect)
+  * task
+
+## Step 2: Create User State System
+
+Create:
+`/src/core/user-state.ts`
+
+State includes:
+
+* level
+* streak
+* riskScore
+* lastRelapse
+* dangerTimes
+
+## Step 3: Create Risk Engine
+
+Move logic from:
+
+* danger-times
+* sos
+
+Into:
+`/src/core/risk-engine.ts`
+
+Expose:
+
+* analyzeRisk()
+* shouldTriggerSOS()
+
+## Step 4: Create Task Engine
+
+Merge:
+
+* hadi-tasks
+* habits
+* plan
+
+Into:
+`/src/core/task-engine.ts`
+
+## Step 5: Refactor Home Page
+
+Home should NOT show many options.
+
+It should:
+
+* Show current state
+* Show ONE primary button:
+  "Start Now"
+
+On click:
+→ call Zakiy
+→ follow returned action
+
+## Step 6: Create Central API
+
+Create endpoint:
+POST /api/zakiy
+
+Returns:
+{
+message,
+action,
+task
+}
+
+## Step 7: Community Refactor
+
+Merge:
+
+* ameen
+* secret-dua
+* dhikr-rooms
+* challenge
+* map
+
+Into:
+Single module:
+`/community`
+
+## Step 8: Notification System
+
+Convert to event-driven:
+
+* risk spike
+* inactivity
+* prayer time
+
+## FINAL RULE
+
+Zakiy is the ONLY decision maker.
+Pages are just execution tools.
+
+Start with step 1 and implement incrementally.
+
+---
+
+# 🧩 ثانياً: خطة التنفيذ (Tasks step-by-step)
+
+دي أهم جزء فعلي 👇
+
+---
+
+## 🟢 Phase 1: تثبيت الأساس (لازم الأول)
+
+### ✅ Task 1: Zakiy Engine
+
+* ملف: `zakiy-engine.ts`
+* يعمل:
+
+  * يستقبل user state
+  * يرجع decision
+
+👉 ده قلب المشروع
+
+---
+
+### ✅ Task 2: User State
+
+* اعمل store موحد
+* يشتغل مع:
+
+  * localStorage + backend
+
+---
+
+### ✅ Task 3: Risk Engine
+
+* اسحب logic من:
+
+  * `/danger-times`
+  * `/sos`
+
+وحطهم هنا
+
+---
+
+## 🟡 Phase 2: دمج الأنظمة
+
+### ✅ Task 4: Task Engine
+
+ادمج:
+
+* hadi-tasks
+* habits
+* plan
+
+في نظام واحد
+
+---
+
+### ✅ Task 5: Journey Refactor
+
+ادمج:
+
+* journey
+* day-one
+* relapse
+* progress
+
+→ في flow واحد
+
+---
+
+### ✅ Task 6: Community Merge
+
+ادمج:
+
+* ameen
+* secret-dua
+* rooms
+* challenge
+* map
+
+→ صفحة واحدة
+
+---
+
+## 🔴 Phase 3: التحكم الذكي
+
+### ✅ Task 7: Home يتحول لواجهة ذكية
+
+بدل:
+
+* 20 زر
+
+يبقى:
+
+* حالة المستخدم
+* زر:
+  👉 “ابدأ الآن”
+
+---
+
+### ✅ Task 8: SOS Trigger تلقائي
+
+مش user بس يدخل
+
+👉 النظام يفعله لوحده
+
+---
+
+### ✅ Task 9: Notifications Event-based
+
+بدل cron:
+
+* based on:
+
+  * risk
+  * inactivity
+  * time
+
+---
+
+## 🔵 Phase 4: تحسين التجربة
+
+### ✅ Task 10: Dynamic UI
+
+* اللون حسب الحالة
+* واجهة “هادية / تحذيرية”
+
+---
+
+### ✅ Task 11: Audio Mode
+
+* تشغيل تلقائي:
+
+  * قرآن
+  * أذكار
+
+---
+
+# ⚠️ أخطاء شفتها في المشروع لازم تتصلح
+
+## ❌ 1. كل Feature صفحة مستقلة
+
+→ لازم تتحول لأدوات داخل system
+
+---
+
+## ❌ 2. مفيش State مركزي واضح
+
+→ ده هيكسر الذكاء
+
+---
+
+## ❌ 3. زكي مجرد Chat
+
+→ لازم يبقى:
+
+> Decision Engine
+
+---
+
+# 🧠 ثالثاً: ترتيب التنفيذ الصح
+
+ما تعملش كده ❌:
+
+* UI
+* صفحات
+* تصميم
+
+---
+
+اعمل كده ✅:
+
+1. Zakiy Engine
+2. User State
+3. Risk Engine
+4. Task Engine
+5. ربط Home
+
+---
+
+# 🔥 أهم جملة تمشي بيها المشروع
+
+> “المستخدم لا يتنقل بين الصفحات… النظام يقوده”
+
+---
+
+# 💬 رأيي النهائي بعد المراجعة
+
+المشروع عندك:
+
+* غني جدًا
+* فيه شغل ضخم
+
+لكن لو كملت بنفس الشكل:
+
+> هيتحول لـ Feature Dump
+
+ولو نفذت اللي فوق:
+
+> هيبقى Product فعلاً مختلف
+
+---
+
+## لو عايز نكمل صح للآخر:
+
+أقدر الخطوة الجاية أعمل لك:
+
+* **Schema DB مضبوط**
+* أو **تصميم Zakiy Prompt AI فعلي (production-ready)**
+
+قولّي 👍
