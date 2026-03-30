@@ -531,47 +531,23 @@ function stripEmojisAndSymbols(text: string): string {
     .trim();
 }
 
-const HF_TTS_MODEL = "facebook/mms-tts-ara";
-const HF_TTS_URL = `https://router.huggingface.co/hf-inference/models/${HF_TTS_MODEL}`;
-const HF_MAX_RETRIES = 5;
-const HF_RETRY_DELAY_MS = 3000;
-
-async function generateZakiyAudio(text: string, _voiceProfileId?: string): Promise<string> {
+async function generateZakiyAudio(text: string, voiceProfileId?: string): Promise<string> {
   const cleanText = stripEmojisAndSymbols(stripForTTS(text));
   if (!cleanText.trim()) return "";
 
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  if (!apiKey) throw new Error("HUGGINGFACE_API_KEY is not set");
+  const profileId = voiceProfileId && VOICE_PROFILES[voiceProfileId] ? voiceProfileId : DEFAULT_VOICE_PROFILE;
+  const profile = VOICE_PROFILES[profileId]!;
 
-  for (let attempt = 0; attempt < HF_MAX_RETRIES; attempt++) {
-    const response = await fetch(HF_TTS_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "audio/flac",
-      },
-      body: JSON.stringify({ inputs: cleanText }),
-    });
-
-    if (response.ok) {
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer).toString("base64");
-    }
-
-    if (response.status === 503) {
-      const body = (await response.json().catch(() => ({}))) as { estimated_time?: number };
-      const waitMs = body.estimated_time ? Math.ceil(body.estimated_time) * 1000 : HF_RETRY_DELAY_MS;
-      console.log(`[Zakiy TTS] Model loading, waiting ${waitMs}ms (attempt ${attempt + 1}/${HF_MAX_RETRIES})`);
-      await new Promise((r) => setTimeout(r, waitMs));
-      continue;
-    }
-
-    const errText = await response.text().catch(() => response.statusText);
-    throw new Error(`HuggingFace TTS failed (${response.status}): ${errText}`);
-  }
-
-  throw new Error("HuggingFace TTS: model did not become ready in time");
+  const ttsResponse = await openai.chat.completions.create({
+    model: "gpt-audio",
+    modalities: ["text", "audio"],
+    audio: { voice: profile.voice, format: "mp3" },
+    messages: [
+      { role: "system", content: profile.system },
+      { role: "user", content: cleanText },
+    ],
+  });
+  return (ttsResponse.choices[0]?.message as any)?.audio?.data ?? "";
 }
 
 // ══════════════════════════════════════════
