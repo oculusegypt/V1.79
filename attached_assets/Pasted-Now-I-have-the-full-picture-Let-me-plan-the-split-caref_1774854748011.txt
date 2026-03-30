@@ -1,0 +1,60 @@
+Now I have the full picture. Let me plan the split carefully:
+
+Folder: artifacts/tawbah-web/src/pages/home/
+
+The modules I'll create:
+
+types.ts - All types + constants + grid metadata + order helpers
+
+Types: BannerType, AyahRef, BannerItem, GridId, ListId, SectionId, GridCardMeta, BannerSlide
+Constants: GRID_IDS, GRID_DEFAULT, LIST_DEFAULT, ALL_SECTIONS, COMBINED_STORAGE_KEY, GRID_META
+Helpers: loadCombinedOrder, saveCombinedOrder, isGridItem
+banner-data.ts - Banner slides with seasonal detection logic, styling maps, and icon configurations
+
+HeroBellButton.tsx - The bell button component
+
+SosReturnToast.tsx - Toast notification for SOS returns
+
+QuickAccessBar.tsx - Quick access navigation with its data
+
+DailyFocusCard.tsx - Daily tasks card component
+
+Continuing with the remaining components...
+
+Actually, I'm realizing InviteFriendCard shouldn't be grouped with the banner since it's independent, so I'll separate those out and keep the banner-specific pieces together.
+
+Now I'm organizing the bento grid cells and their related utilities into one file, which includes various counter and display components along with prayer calculation helpers and constants. The Journey card will import from that bento file, and then I have the garden stages section and finally a list-sections file that handles all the simpler list-based sections with their labels and rendering logic. I need to be careful about imports and exports across these files, and make sure nothing breaks when I refactor. Since App.tsx imports from "@/pages/home", creating a home/index.tsx file should work fine with TypeScript resolution, but I should verify the import path won't cause issues.
+
+Actually, I need to handle the file migration properly - if both home.tsx and home/ exist, there could be a conflict, so I'll need to create the directory structure, move the content over, and then delete the original file.
+
+Now I'm planning out the type definitions and component structure...
+
+Defining the type system...
+
+Now I'm setting up the storage key and metadata mappings, then creating helper functions to load and save the combined section order, plus a type guard to distinguish grid items from list items. I need to be careful about the imports each file will need—types.ts should only export types and constants, while the helper functions will go in a separate utilities file. Now I'm mapping out the remaining components and their dependencies—DynamicBanner needs the banner configuration and animation libraries, InviteFriendCard and HadithCard are straightforward with basic state management, and QuranCard requires bookmarking and animation support alongside navigation. The bento-cells and JourneyCard round out the feature set with their respective animation and state needs.
+
+Looking at the next layer, I'm pulling together Summary and various bento widgets along with authentication utilities for the main page, while GardenSection handles its own navigation and motion, and list-sections orchestrates all the card components and section modules together into a unified interface. SortableUnifiedItem is starting to come into focus as well.
+
+Now I need to think through the import structure carefully—since App.tsx imports from "@/pages/home" and I'm converting that to a directory with an index file, I should verify how the routing actually works before proceeding with the file reorganization.
+
+Let me map out the module structure I'm building: types and constants in one file, banner data and styling in another, then the individual components like HeroBellButton, SosReturnToast, QuickAccessBar, and DailyFocusCard, with the main index file tying everything together. Now I'm mapping out the remaining home page components and then I need to track which icons each one uses so I don't import duplicates. I'm mapping out the remaining icon assignments across the different sections and components—HeartHandshake for the signs and secret dua features, BookOpen for the rajaa section, PenLine for journaling, ScrollText for kaffarah tracking, Clock for prayer and danger times, BarChart2 for progress visualization, Sparkles for the zakiy mode toggle, ListChecks for hadi tasks, ImageIcon for tawbah cards, Swords for challenges, Globe for the map, and Users for collaborative features.
+
+Now I'm continuing with the DhikrRooms list and grid layouts, adding CalendarDays for the 30-day journey, Bell for notifications and the hero button, HandHeart for the ameen section, Moon and Sun and Star for the banner data, BookMarked for verse cells and quran cards, MessageCircle for the banner, X for dynamic banners and eid entry cards, BookText for the tafsir sheet, Share2 for inviting friends, and GripVertical for the sortable items and home page drag functionality.
+
+I'm also noting Settings2 for the home page, TrendingUp for journey cards, Zap and ShieldAlert for the grid metadata types, and realizing that Flame and Volume2 don't appear to be used anywhere so I'll skip importing those. Now I'm ready to start writing the files in dependency order, though I need to make sure SortableUnifiedItem can access renderSection from the list-sections module.
+
+I'm settling on having list-sections.tsx export the simple section components, the renderSection function, and section labels, while SortableUnifiedItem imports from there along with types. The main Home component will pull from all these modules. I'll organize the writes in batches starting with the pure data and type files that have no React dependencies. I'm organizing the remaining components into the final batches, then I'll start writing them in parallel. I need to be careful about unused imports and the quran reading tracker state—it looks like the reset logic happens elsewhere, not in the component itself. For the types file, I'm noting that GRID_META uses JSX elements, which I'll need to handle properly. For banner-data.ts, it stores component references rather than JSX instances, so it can stay as .ts, but I'm realizing ICON_MAP might belong in DynamicBanner.tsx instead since that's where it's actually used to render the icons.
+
+عندي الصورة الكاملة. الملف 3590 سطر. سأقسّمه بدقة كسينيور إلى 16 ملف منظم دون أي تغيير في المنطق أو الوظيفة.
+
+خطة التقسيم:
+
+home/types.tsx - الأنواع + الثوابت + GRID_META
+home/banner-data.ts - بيانات البانر + getSeasonBanner
+home/HeroBellButton.tsx, SosReturnToast.tsx, InviteFriendCard.tsx, EidEntryCard.tsx, DynamicBanner.tsx, QuickAccessBar.tsx, DailyFocusCard.tsx
+home/HadithCard.tsx, QuranCard.tsx
+home/bento-cells.tsx - كل sub-cells + useQiblaAndPrayer
+home/JourneyCard.tsx, GardenSection.tsx
+home/list-sections.tsx - كل الـ Section* البسيطة
+home/SortableUnifiedItem.tsx
+home/index.tsx - الكومبوننت الرئيسي
