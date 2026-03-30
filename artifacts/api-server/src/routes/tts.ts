@@ -1,48 +1,19 @@
 import { Router, type IRouter } from "express";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
-const HF_MODEL = "facebook/mms-tts-ara";
-const HF_API_URL = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
-const MAX_RETRIES = 5;
-const RETRY_DELAY_MS = 3000;
+const HADITH_SYSTEM_PROMPT = `أنت قارئ صوتي عربي رجولي دافئ وواضح.
+نبرتك: حيوية ومتدفقة — ليست بطيئة ولا متثاقلة. كأخ يشاركك حكمة بصدق وطبيعية.
+اقرأ الحديث النبوي بوضوح وفصحى سليمة دون إطالة في المدود.
+حافظ على إيقاع منتظم ومتوسط السرعة — لا تتوقف طويلاً بين الجمل.
+كرّر النص المُعطى كما هو بالضبط دون إضافة أو حذف.`;
 
-async function synthesizeWithHuggingFace(text: string): Promise<Buffer> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-  if (!apiKey) throw new Error("HUGGINGFACE_API_KEY is not set");
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const response = await fetch(HF_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        Accept: "audio/flac",
-      },
-      body: JSON.stringify({ inputs: text }),
-    });
-
-    if (response.ok) {
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer);
-    }
-
-    if (response.status === 503) {
-      const body = (await response.json().catch(() => ({}))) as { estimated_time?: number };
-      const waitMs = body.estimated_time
-        ? Math.ceil(body.estimated_time) * 1000
-        : RETRY_DELAY_MS;
-      console.log(`[TTS] Model loading, waiting ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
-      await new Promise((r) => setTimeout(r, waitMs));
-      continue;
-    }
-
-    const errText = await response.text().catch(() => response.statusText);
-    throw new Error(`HuggingFace TTS failed (${response.status}): ${errText}`);
-  }
-
-  throw new Error("HuggingFace TTS: model did not become ready in time");
-}
+const STORY_SYSTEM_PROMPT = `أنت راوٍ عربي بصوت رجولي واضح وجذّاب ينقل القصص الإيمانية.
+صوتك حيوي ومتدفق — لا بطيء ولا متثاقل. الحكاية تنساب بطبيعية وحيوية.
+اروِ القصة بنبرة تشويقية مباشرة دون توقفات مطوّلة.
+حافظ على إيقاع متوسط السرعة طوال الوقت ليظل المستمع متابعاً.
+كرّر النص المُعطى كما هو بالضبط دون إضافة أو حذف.`;
 
 router.post("/tts", async (req, res) => {
   try {
@@ -54,20 +25,37 @@ router.post("/tts", async (req, res) => {
       type?: "hadith" | "story";
     };
 
+    let systemPrompt: string;
     let userText: string;
+    let voice: "onyx" | "echo";
 
     if (type === "story" && story) {
+      systemPrompt = STORY_SYSTEM_PROMPT;
       userText = lesson ? `${story}\n\nالعبرة: ${lesson}` : story;
+      voice = "echo";
     } else if (hadith) {
+      systemPrompt = HADITH_SYSTEM_PROMPT;
       userText = note ? `${hadith}\n\n${note}` : hadith;
+      voice = "onyx";
     } else {
       res.status(400).json({ error: "text content is required" });
       return;
     }
 
-    const audioBuffer = await synthesizeWithHuggingFace(userText);
+    const response = await openai.chat.completions.create({
+      model: "gpt-audio",
+      modalities: ["text", "audio"],
+      audio: { voice, format: "mp3" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText },
+      ],
+    });
 
-    res.setHeader("Content-Type", "audio/flac");
+    const audioData = (response.choices[0]?.message as any)?.audio?.data ?? "";
+    const audioBuffer = Buffer.from(audioData, "base64");
+
+    res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Content-Length", audioBuffer.length);
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.send(audioBuffer);
