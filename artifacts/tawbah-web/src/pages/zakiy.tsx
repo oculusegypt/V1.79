@@ -1,13 +1,229 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { Send, Mic, Play, Pause, Volume2, Loader2, StopCircle, BookOpen, Scale, ExternalLink, Heart, X, CheckSquare, Handshake, BookMarked, AlertTriangle, Sparkles } from "lucide-react";
+import { Send, Mic, Play, Pause, Volume2, Loader2, StopCircle, BookOpen, Scale, ExternalLink, Heart, X, CheckSquare, Handshake, BookMarked, AlertTriangle, Sparkles, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
 import { getSessionId } from "@/lib/session";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { voicePending } from "@/lib/voice-pending";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
+
+// ══════════════════════════════════════════
+// VOICE PROFILES
+// ══════════════════════════════════════════
+
+const VOICE_PROFILES = [
+  {
+    id: "sheikh-calm",
+    gender: "male" as const,
+    name: "الشيخ الهادئ",
+    desc: "صوت رجولي وقور بفصحى سليمة",
+    emoji: "🕌",
+    tag: "هادئ · فصحى",
+  },
+  {
+    id: "wise-friend",
+    gender: "male" as const,
+    name: "الصاحب الحكيم",
+    desc: "شاب ٣٥ سنة، دافئ وحكيم كصاحب",
+    emoji: "🤝",
+    tag: "ودود · طبيعي",
+  },
+  {
+    id: "young-guide",
+    gender: "male" as const,
+    name: "المرشد الشاب",
+    desc: "شاب حيوي وواضح ومُشجِّع",
+    emoji: "✨",
+    tag: "حيوي · مباشر",
+  },
+  {
+    id: "wise-teacher",
+    gender: "female" as const,
+    name: "المعلمة الفاضلة",
+    desc: "صوت أنثوي رزين بفصحى واضحة",
+    emoji: "📚",
+    tag: "هادئة · فصحى",
+  },
+  {
+    id: "sister-caring",
+    gender: "female" as const,
+    name: "الأخت المتفهمة",
+    desc: "شابة دافئة تتكلم بصدق وحنان",
+    emoji: "💙",
+    tag: "حنونة · طبيعية",
+  },
+  {
+    id: "gentle-mentor",
+    gender: "female" as const,
+    name: "المرشدة الحنونة",
+    desc: "ناعمة ومطمئنة تبثّ السكينة",
+    emoji: "🌸",
+    tag: "ناعمة · مريحة",
+  },
+];
+
+const VOICE_PROFILE_STORAGE_KEY = "zakiy_voice_profile";
+const DEFAULT_VOICE_PROFILE_ID = "wise-friend";
+
+function VoiceSelectorSheet({
+  selectedId,
+  onSelect,
+  onClose,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const males = VOICE_PROFILES.filter((p) => p.gender === "male");
+  const females = VOICE_PROFILES.filter((p) => p.gender === "female");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="w-full max-w-md rounded-t-3xl overflow-hidden"
+        style={{
+          background: "linear-gradient(180deg,#f7f5ef 0%,#fefefe 100%)",
+          boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+          {/* Handle */}
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="w-10 h-1 rounded-full bg-stone-300" />
+          </div>
+
+          {/* Header */}
+          <div className="px-5 pt-2 pb-3 border-b border-stone-200/70 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-stone-800" style={{ fontFamily: "inherit" }}>
+                اختر صوت زكي 🎙️
+              </h3>
+              <p className="text-[11px] text-stone-500 mt-0.5">الصوت يُطبَّق على الردود القادمة</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="px-4 py-3 space-y-4 max-h-[70vh] overflow-y-auto">
+            {/* Male section */}
+            <div>
+              <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-2 px-1">رجالي</p>
+              <div className="space-y-2">
+                {males.map((profile) => {
+                  const isSelected = selectedId === profile.id;
+                  return (
+                    <button
+                      key={profile.id}
+                      onClick={() => { onSelect(profile.id); onClose(); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-right transition-all",
+                        isSelected
+                          ? "bg-emerald-50 border-2 border-emerald-400"
+                          : "bg-white border-2 border-transparent hover:border-stone-200"
+                      )}
+                      style={{ boxShadow: isSelected ? "0 2px 12px rgba(5,150,105,0.15)" : "0 1px 4px rgba(0,0,0,0.06)" }}
+                    >
+                      <span className="text-2xl">{profile.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-sm font-bold", isSelected ? "text-emerald-700" : "text-stone-800")}>
+                            {profile.name}
+                          </span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
+                            isSelected
+                              ? "bg-emerald-100 text-emerald-600 border-emerald-200"
+                              : "bg-stone-100 text-stone-500 border-stone-200"
+                          )}>
+                            {profile.tag}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-stone-500 mt-0.5 leading-snug">{profile.desc}</p>
+                      </div>
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Female section */}
+            <div>
+              <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-2 px-1">نسائي</p>
+              <div className="space-y-2">
+                {females.map((profile) => {
+                  const isSelected = selectedId === profile.id;
+                  return (
+                    <button
+                      key={profile.id}
+                      onClick={() => { onSelect(profile.id); onClose(); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-right transition-all",
+                        isSelected
+                          ? "bg-emerald-50 border-2 border-emerald-400"
+                          : "bg-white border-2 border-transparent hover:border-stone-200"
+                      )}
+                      style={{ boxShadow: isSelected ? "0 2px 12px rgba(5,150,105,0.15)" : "0 1px 4px rgba(0,0,0,0.06)" }}
+                    >
+                      <span className="text-2xl">{profile.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-sm font-bold", isSelected ? "text-emerald-700" : "text-stone-800")}>
+                            {profile.name}
+                          </span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
+                            isSelected
+                              ? "bg-emerald-100 text-emerald-600 border-emerald-200"
+                              : "bg-stone-100 text-stone-500 border-stone-200"
+                          )}>
+                            {profile.tag}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-stone-500 mt-0.5 leading-snug">{profile.desc}</p>
+                      </div>
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="h-4" />
+          </div>
+        </motion.div>
+      </motion.div>
+  );
+}
 
 // ══════════════════════════════════════════
 // TYPES
@@ -1120,6 +1336,10 @@ export default function ZakiyPage() {
   const [anniversaryMilestone, setAnniversaryMilestone] = useState<string | null>(null);
   const [autoPlayMsgId, setAutoPlayMsgId] = useState<string | null>(null);
   const autoPlayQueueRef = useRef<string[]>([]);
+  const [voiceProfileId, setVoiceProfileId] = useState<string>(
+    () => localStorage.getItem(VOICE_PROFILE_STORAGE_KEY) ?? DEFAULT_VOICE_PROFILE_ID
+  );
+  const [voiceSelectorOpen, setVoiceSelectorOpen] = useState(false);
 
   const [interimText, setInterimText] = useState("");
 
@@ -1132,6 +1352,13 @@ export default function ZakiyPage() {
   const sessionId = getSessionId();
   const hasUserMessages = messages.some((m) => m.role === "user");
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  function handleVoiceProfileSelect(id: string) {
+    setVoiceProfileId(id);
+    localStorage.setItem(VOICE_PROFILE_STORAGE_KEY, id);
+  }
+
+  const currentVoiceProfile = VOICE_PROFILES.find((p) => p.id === voiceProfileId) ?? VOICE_PROFILES[1]!;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1310,7 +1537,7 @@ export default function ZakiyPage() {
       const res = await fetch(`${API_BASE}/zakiy/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, history, sessionId }),
+        body: JSON.stringify({ message: trimmed, history, sessionId, voiceProfile: voiceProfileId }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -1377,7 +1604,7 @@ export default function ZakiyPage() {
           const res = await fetch(`${API_BASE}/zakiy/voice`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ audioBase64: b64, history, sessionId }),
+            body: JSON.stringify({ audioBase64: b64, history, sessionId, voiceProfile: voiceProfileId }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error((data as { error?: string }).error ?? "voice_failed");
@@ -1466,6 +1693,17 @@ export default function ZakiyPage() {
 
   return (
     <div className="flex flex-col h-full" dir="rtl">
+      {/* Voice Selector Sheet */}
+      <AnimatePresence>
+        {voiceSelectorOpen && (
+          <VoiceSelectorSheet
+            selectedId={voiceProfileId}
+            onSelect={handleVoiceProfileSelect}
+            onClose={() => setVoiceSelectorOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <PageHeader
         title="الزكي"
@@ -1485,6 +1723,16 @@ export default function ZakiyPage() {
                 <Sparkles size={11} /> {anniversaryMilestone}
               </span>
             )}
+            {/* Voice Selector Button */}
+            <button
+              onClick={() => setVoiceSelectorOpen(true)}
+              className="flex items-center gap-1.5 bg-white/80 dark:bg-stone-800/60 px-2.5 py-1 rounded-full border border-stone-200 dark:border-stone-700/50 hover:border-emerald-300 transition-colors"
+              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}
+            >
+              <span className="text-sm leading-none">{currentVoiceProfile.emoji}</span>
+              <span className="text-[11px] text-stone-600 dark:text-stone-300 font-medium max-w-[60px] truncate">{currentVoiceProfile.name}</span>
+              <ChevronDown size={11} className="text-stone-400 flex-shrink-0" />
+            </button>
             <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">متصل</span>

@@ -408,10 +408,51 @@ ${memorySection}
 لا تكن قاسياً — كن دافئاً ومحباً في الاعتذار، ثم اعرض المساعدة في الأمور الدينية.`;
 }
 
-const ZAKIY_TTS_SYSTEM = `اقرأ النص التالي كما هو بالضبط بصوت رجل عربي واضح وحيوي وطبيعي.
-النبرة: متوسطة السرعة إلى سريعة بعض الشيء — حيوية ومباشرة كأخ يتكلم بصدق وثقة.
-لا تتوقف طويلاً بين الجمل، حافظ على إيقاع متدفق ومنتظم.
-لا تضف ولا تحذف ولا تختصر أي شيء.`;
+const VOICE_PROFILES: Record<string, { voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" | "coral" | "sage"; system: string }> = {
+  "sheikh-calm": {
+    voice: "onyx",
+    system: `اقرأ النص التالي كما هو بالضبط بصوت شيخ عربي رجولي هادئ وواقر.
+النبرة: فصيحة سليمة — متأنية وهادئة، بإيقاع منتظم ومتوسط السرعة أو أعلى قليلاً.
+كأنك شيخ يحدّث مريديه بدفء ووقار وعلم.
+لا تضف ولا تحذف ولا تختصر أي شيء.`,
+  },
+  "wise-friend": {
+    voice: "fable",
+    system: `اقرأ النص التالي كما هو بالضبط بصوت رجل في الخامسة والثلاثين، دافئ وحكيم وودود.
+النبرة: طبيعية وحميمة، سرعة خفيفة فوق المتوسط — كأنك صاحب صادق يتكلم من القلب بثقة وحنان.
+لا تتوقف طويلاً بين الجمل، إيقاع متدفق وطبيعي.
+لا تضف ولا تحذف ولا تختصر أي شيء.`,
+  },
+  "young-guide": {
+    voice: "echo",
+    system: `اقرأ النص التالي كما هو بالضبط بصوت شاب عربي حيوي وواضح ومُشجِّع.
+النبرة: خفيفة وعصرية ومباشرة — سرعة أعلى من المتوسط بعض الشيء، بثقة وإيجابية كمُرشد شاب.
+لا تتوقف طويلاً بين الجمل، حافظ على إيقاع متدفق وحيوي.
+لا تضف ولا تحذف ولا تختصر أي شيء.`,
+  },
+  "wise-teacher": {
+    voice: "shimmer",
+    system: `اقرأ النص التالي كما هو بالضبط بصوت امرأة عربية رزينة وعالِمة.
+النبرة: فصيحة واضحة — هادئة ومتأنية بإيقاع منتظم ومتوسط السرعة أو أعلى قليلاً، كمعلمة فاضلة.
+لا تضف ولا تحذف ولا تختصر أي شيء.`,
+  },
+  "sister-caring": {
+    voice: "nova",
+    system: `اقرأ النص التالي كما هو بالضبط بصوت امرأة عربية شابة متفهّمة وودودة.
+النبرة: دافئة وطبيعية — سرعة خفيفة فوق المتوسط، كأخت تتحدث بصدق وحنان حقيقي.
+لا تتوقف طويلاً بين الجمل، إيقاع متدفق وطبيعي.
+لا تضف ولا تحذف ولا تختصر أي شيء.`,
+  },
+  "gentle-mentor": {
+    voice: "coral",
+    system: `اقرأ النص التالي كما هو بالضبط بصوت امرأة عربية حنونة وناعمة وهادئة.
+النبرة: لطيفة ومطمئنة — سرعة متوسطة إلى أعلى قليلاً، كمرشدة روحانية تبثّ السكينة.
+لا تتوقف طويلاً بين الجمل، إيقاع هادئ ومتدفق.
+لا تضف ولا تحذف ولا تختصر أي شيء.`,
+  },
+};
+
+const DEFAULT_VOICE_PROFILE = "wise-friend";
 
 // ══════════════════════════════════════════
 // HELPERS
@@ -490,16 +531,19 @@ function stripEmojisAndSymbols(text: string): string {
     .trim();
 }
 
-async function generateZakiyAudio(text: string): Promise<string> {
+async function generateZakiyAudio(text: string, voiceProfileId?: string): Promise<string> {
   const cleanText = stripEmojisAndSymbols(stripForTTS(text));
   if (!cleanText.trim()) return "";
+
+  const profileId = voiceProfileId && VOICE_PROFILES[voiceProfileId] ? voiceProfileId : DEFAULT_VOICE_PROFILE;
+  const profile = VOICE_PROFILES[profileId]!;
 
   const ttsResponse = await openai.chat.completions.create({
     model: "gpt-audio",
     modalities: ["text", "audio"],
-    audio: { voice: "onyx", format: "mp3" },
+    audio: { voice: profile.voice, format: "mp3" },
     messages: [
-      { role: "system", content: ZAKIY_TTS_SYSTEM },
+      { role: "system", content: profile.system },
       { role: "user", content: cleanText },
     ],
   });
@@ -629,7 +673,7 @@ async function expandSurahMarkers(raw: string): Promise<string> {
   return result;
 }
 
-async function generateSegmentedAudio(responseText: string): Promise<ServerResponseSegment[]> {
+async function generateSegmentedAudio(responseText: string, voiceProfileId?: string): Promise<ServerResponseSegment[]> {
   const preprocessed = preprocessQuranCitations(responseText);
   const expanded = await expandSurahMarkers(preprocessed);
   const segments = parseRawSegments(expanded);
@@ -647,7 +691,7 @@ async function generateSegmentedAudio(responseText: string): Promise<ServerRespo
       const cleanText = stripStageDirections(stripFatwaMarkers(seg.text));
       if (!cleanText.trim()) return { segIdx, audio: "" };
       try {
-        const audio = await generateZakiyAudio(seg.text);
+        const audio = await generateZakiyAudio(seg.text, voiceProfileId);
         return { segIdx, audio };
       } catch (err) {
         console.error(`TTS failed for segment ${segIdx}:`, err);
@@ -690,10 +734,11 @@ async function generateZakiyResponse(
 
 router.post("/zakiy/message", async (req, res) => {
   try {
-    const { message, history = [], sessionId = "" } = req.body as {
+    const { message, history = [], sessionId = "", voiceProfile } = req.body as {
       message: string;
       history: { role: "user" | "assistant"; content: string }[];
       sessionId?: string;
+      voiceProfile?: string;
     };
 
     if (!message?.trim()) {
@@ -703,7 +748,7 @@ router.post("/zakiy/message", async (req, res) => {
 
     const memory = await loadMemory(sessionId);
     const responseText = await generateZakiyResponse(message, history, memory);
-    const segments = await generateSegmentedAudio(responseText);
+    const segments = await generateSegmentedAudio(responseText, voiceProfile);
 
     // Update memory asynchronously (fire and forget)
     if (sessionId) {
@@ -719,12 +764,12 @@ router.post("/zakiy/message", async (req, res) => {
 
 router.post("/zakiy/tts", async (req, res) => {
   try {
-    const { text } = req.body as { text: string };
+    const { text, voiceProfile } = req.body as { text: string; voiceProfile?: string };
     if (!text?.trim()) {
       res.status(400).json({ error: "text is required" });
       return;
     }
-    const segments = await generateSegmentedAudio(text);
+    const segments = await generateSegmentedAudio(text, voiceProfile);
     res.json({ segments });
   } catch (err) {
     console.error("Zakiy TTS error:", err);
@@ -826,10 +871,11 @@ ${JSON.stringify(memory, null, 2)}
 
 router.post("/zakiy/voice", async (req, res) => {
   try {
-    const { audioBase64, history = [], sessionId = "" } = req.body as {
+    const { audioBase64, history = [], sessionId = "", voiceProfile } = req.body as {
       audioBase64: string;
       history: { role: "user" | "assistant"; content: string }[];
       sessionId?: string;
+      voiceProfile?: string;
     };
 
     if (!audioBase64) {
@@ -848,7 +894,7 @@ router.post("/zakiy/voice", async (req, res) => {
 
     const memory = await loadMemory(sessionId);
     const responseText = await generateZakiyResponse(transcript, history, memory);
-    const segments = await generateSegmentedAudio(responseText);
+    const segments = await generateSegmentedAudio(responseText, voiceProfile);
 
     if (sessionId) {
       updateMemory(sessionId, transcript, responseText, memory).catch(() => {});
