@@ -80,6 +80,27 @@ artifacts-monorepo/
 
 Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references.
 
+## Required Setup (for any agent starting on this project)
+
+### OpenAI Integration (REQUIRED — must run before starting)
+
+All AI features (Zakiy chatbot, TTS in Rajaa library, voice responses) use OpenAI via Replit's managed AI Integrations proxy. No API key from the user is needed — Replit provisions it automatically.
+
+**You MUST run this in the code_execution sandbox before working on any AI features:**
+
+```javascript
+const result = await setupReplitAIIntegrations({
+    providerSlug: "openai",
+    providerUrlEnvVarName: "AI_INTEGRATIONS_OPENAI_BASE_URL",
+    providerApiKeyEnvVarName: "AI_INTEGRATIONS_OPENAI_API_KEY"
+});
+console.log(result);
+```
+
+This sets `AI_INTEGRATIONS_OPENAI_BASE_URL` and `AI_INTEGRATIONS_OPENAI_API_KEY` environment variables. The server-side client is at `lib/integrations-openai-ai-server/src/client.ts` — it automatically picks up these env vars. After running, restart the API server workflow so it picks up the new variables.
+
+If the Zakiy chatbot throws "No OpenAI credentials found", it means this step was skipped.
+
 ## Root Scripts
 
 - `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages
