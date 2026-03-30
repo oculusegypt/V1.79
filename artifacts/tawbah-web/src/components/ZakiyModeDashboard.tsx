@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useZakiyMode } from "@/context/ZakiyModeContext";
 import { useUserProgress } from "@/hooks/use-progress";
+import { setZakiyState } from "@/core/theme";
 import {
   Sparkles, Loader2, ArrowLeft, Flame, Shield,
   AlertTriangle, ChevronDown, ChevronUp, X,
@@ -25,12 +26,20 @@ export function ZakiyModeDashboard() {
     }
   }, [decision, trustLevel]);
 
+  // Clear zakiy visual state when this dashboard unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      setZakiyState(null);
+    };
+  }, []);
+
   const handleStart = async () => {
     setStarted(true);
     clearError();
     await fetchDecision();
   };
 
+  // Urgency config — intentional dark-themed colours for Zakiy AI cards
   const urgencyConfig = {
     low:       { color: "from-emerald-900/60 to-emerald-950/80", border: "border-emerald-500/20", icon: Shield,        iconColor: "text-emerald-400", label: "مستقر" },
     medium:    { color: "from-amber-900/60 to-amber-950/80",     border: "border-amber-500/30",   icon: Flame,         iconColor: "text-amber-400",   label: "تحتاج متابعة" },
@@ -52,7 +61,7 @@ export function ZakiyModeDashboard() {
       <div className="min-h-screen flex flex-col items-center justify-center px-5 pb-24" dir="rtl">
         <div className="w-full max-w-sm space-y-5">
 
-          {/* Error toast — non-blocking, dismissible */}
+          {/* Error toast */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -62,10 +71,7 @@ export function ZakiyModeDashboard() {
                 className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-red-950/60 border border-red-500/30"
               >
                 <p className="text-sm text-red-300">{error}</p>
-                <button
-                  onClick={clearError}
-                  className="text-white/40 hover:text-white/70 shrink-0"
-                >
+                <button onClick={clearError} className="text-white/40 hover:text-white/70 shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               </motion.div>
@@ -130,6 +136,7 @@ export function ZakiyModeDashboard() {
                 ابدأ الآن
               </button>
             </motion.div>
+
           ) : isLoading ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -139,12 +146,14 @@ export function ZakiyModeDashboard() {
               <Loader2 className="w-10 h-10 animate-spin text-white/40" />
               <p className="text-white/50 text-sm">زكي يفكر…</p>
             </motion.div>
+
           ) : decision ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               className={`rounded-3xl bg-gradient-to-b ${cfg.color} border ${cfg.border} p-6 space-y-5`}
             >
+              {/* Header */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                   <UrgencyIcon className={`w-5 h-5 ${cfg.iconColor}`} />
@@ -155,8 +164,10 @@ export function ZakiyModeDashboard() {
                 </div>
               </div>
 
+              {/* Message */}
               <p className="text-white leading-relaxed text-base">{decision.message}</p>
 
+              {/* CTA */}
               <button
                 onClick={navigateToDecision}
                 className="w-full py-4 rounded-2xl bg-white/15 hover:bg-white/20 text-white font-semibold flex items-center justify-between px-5 transition-colors active:scale-95"
@@ -165,7 +176,7 @@ export function ZakiyModeDashboard() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
 
-              {/* Why this suggestion? */}
+              {/* Why this suggestion */}
               {decision.riskTriggers?.length > 0 && (
                 <button
                   onClick={() => setShowDetails(!showDetails)}
@@ -194,6 +205,7 @@ export function ZakiyModeDashboard() {
                 )}
               </AnimatePresence>
 
+              {/* Re-fetch */}
               <button
                 onClick={handleStart}
                 disabled={isLoading}
@@ -202,6 +214,7 @@ export function ZakiyModeDashboard() {
                 {isLoading ? "جارٍ التحديث…" : "اسأل زكي من جديد"}
               </button>
             </motion.div>
+
           ) : null}
         </div>
       </div>

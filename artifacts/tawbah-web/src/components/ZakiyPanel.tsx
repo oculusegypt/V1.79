@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useZakiyMode } from "@/context/ZakiyModeContext";
+import { setZakiyState } from "@/core/theme";
 import { Sparkles, ArrowLeft, Loader2 } from "lucide-react";
 
 interface ZakiyPanelProps {
@@ -9,26 +11,33 @@ interface ZakiyPanelProps {
 export function ZakiyPanel({ pageName }: ZakiyPanelProps) {
   const { aiMode, trustLevel, decision, fetchDecision, navigateToDecision, isLoading } = useZakiyMode();
 
+  // Clear zakiy state when panel unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      setZakiyState(null);
+    };
+  }, []);
+
   // Level 0 → no auto suggestions (only on explicit button click in dashboard)
   // Level 1+ → show ZakiyPanel
   if (!aiMode || trustLevel < 1) return null;
 
-  const urgencyColors: Record<string, string> = {
-    low: "border-emerald-500/30 bg-emerald-950/40",
-    medium: "border-amber-500/30 bg-amber-950/40",
-    high: "border-orange-500/40 bg-orange-950/40",
+  const urgencyBg: Record<string, string> = {
+    low:       "border-emerald-500/30 bg-emerald-950/40",
+    medium:    "border-amber-500/30 bg-amber-950/40",
+    high:      "border-orange-500/40 bg-orange-950/40",
     emergency: "border-red-500/40 bg-red-950/40",
   };
 
-  const urgencyTextColors: Record<string, string> = {
-    low: "text-emerald-300",
-    medium: "text-amber-300",
-    high: "text-orange-300",
+  const urgencyText: Record<string, string> = {
+    low:       "text-emerald-300",
+    medium:    "text-amber-300",
+    high:      "text-orange-300",
     emergency: "text-red-300",
   };
 
-  const color = urgencyColors[decision?.urgency ?? "low"];
-  const textColor = urgencyTextColors[decision?.urgency ?? "low"];
+  const bgClass  = urgencyBg[decision?.urgency ?? "low"];
+  const textClass = urgencyText[decision?.urgency ?? "low"];
 
   return (
     <AnimatePresence>
@@ -36,10 +45,11 @@ export function ZakiyPanel({ pageName }: ZakiyPanelProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className={`mx-4 mb-6 rounded-2xl border p-4 ${color}`}
+        className={`mx-4 mb-6 rounded-2xl border p-4 ${bgClass}`}
         dir="rtl"
       >
         <div className="flex items-start gap-3">
+          {/* Icon */}
           <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-0.5">
             <Sparkles className="w-4 h-4 text-white/70" />
           </div>
@@ -56,7 +66,7 @@ export function ZakiyPanel({ pageName }: ZakiyPanelProps) {
               </div>
             ) : decision ? (
               <>
-                <p className={`text-sm leading-relaxed ${textColor}`}>
+                <p className={`text-sm leading-relaxed ${textClass}`}>
                   {decision.message}
                 </p>
                 {decision.action.target && (
