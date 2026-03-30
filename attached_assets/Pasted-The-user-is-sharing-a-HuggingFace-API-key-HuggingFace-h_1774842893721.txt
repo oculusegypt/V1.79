@@ -1,0 +1,45 @@
+The user is sharing a HuggingFace API key. HuggingFace has TTS models that support Arabic well. Let me think about this:
+
+HuggingFace Inference API can be used for TTS models
+Good Arabic TTS models on HuggingFace include:
+facebook/mms-tts-ara - Facebook's MMS Arabic TTS
+espeakng/ar - eSpeak Arabic
+microsoft/speecht5_tts - but limited Arabic
+Zaid/speecht5_finetuned_ar - Arabic fine-tuned
+facebook/mms-tts-ara remains the strongest option, with various VITS models also available for Arabic
+Wait—the user just shared their API key directly in the message. I need to securely store this as a secret right away and make sure I don't echo it back in my response, then proceed with implementing the HuggingFace TTS integration.
+
+I'll save the key as a secret and set up the HuggingFace Inference API call for Arabic text-to-speech, using facebook/mms-tts-ara since it's Facebook's multilingual model and produces solid quality Arabic speech output.
+
+Now I'm thinking through how to handle the voice profiles—the user has specific personas like "sheikh-calm" and "wise-friend," but HuggingFace doesn't offer the same voice variety as the previous service, so I'll need to map all profiles to the same underlying model while keeping the profile structure in the UI.
+
+I'm planning to store the HuggingFace API key as a secret, update the TTS function to call their API with the Arabic model, and handle the audio response as base64. Before implementing, I should verify that facebook/mms-tts-ara actually delivers good quality for Arabic, or explore other model options.
+
+Setting up the HuggingFace integration...
+
+I should just return the audio with the correct MIME type and let the frontend handle whatever format comes back. Looking at the current frontend code, it's hardcoded to expect audio/mp3, so I'll either need to convert the FLAC to MP3 on the server or update the frontend to accept FLAC. The simplest path is probably to just send back the audio buffer with the right content type and adjust the frontend accordingly. the MIME type to handle flac, or just convert the flac to wav on the frontend. I think the simplest approach is to use the HuggingFace facebook/mms-tts-ara model, return the audio as base64 while keeping the same API structure, and update the frontend MIME type accordingly. I should also consider that HuggingFace can be slow on cold starts, so I'll need to handle that gracefully in the implementation.
+
+Writing the HuggingFace integration... Finishing the API response structure...
+
+Now I'm thinking about how to handle the audio format across the system. The HuggingFace API returns audio in flac format, but the current response structure only includes the base64 audio data without format information. I could either add a new audioFormat field to each segment or just standardize on flac for the frontend. The simpler approach would be to assume flac and update the frontend accordingly.
+
+But that breaks if we fall back to OpenAI, which returns mp3. So I should add an audioMime field to the segment response and have the frontend use that to properly decode the audio blob.
+
+For the voice profiles, since the MMS model only has one Arabic voice available, I'll keep the UI profiles for visual consistency but map them all to the same underlying model. The speed parameter might be adjustable, though pitch control may be limited depending on what the model supports.
+
+I'm concerned the facebook/mms-tts-ara model might sound too robotic for production use. Let me check what other Arabic TTS options are available on HuggingFace—there are a few alternatives like SpeechT5 fine-tuned variants and other models, though I'm not confident about their quality without testing them first. For now, I'll go with the MMS model since it's the most established freely available option, and I can always swap it out later if needed.
+
+Now I need to plan the implementation: save the HuggingFace API secret, update the backend to add a TTS function using HuggingFace instead of gpt-audio, and modify the segment structure to track the audio mime type so the frontend can play it correctly.
+
+Updating the segment interface...
+
+Building the HuggingFace integration with retry logic... Handling the retry logic with exponential backoff when the model is loading, then extracting the audio data from the response and converting it to base64 for return, with a final fallback error if all attempts fail.
+
+HuggingFace ممتاز وعنده نماذج عربية جيدة. أحفظ المفتاح بأمان أولاً ثم أنفّذ التغيير:
+
+To proceed with the project setup, please provide the following API secrets. Enter the required information in the designated fields and click the 'Add Secrets' button to securely store them.
+
+1 secret requested
+•
+HUGGINGFACE_API_KEY
+Would you like to save this Secret to your Account Secrets so you can easily access it in other Apps?
