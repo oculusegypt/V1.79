@@ -1075,6 +1075,23 @@ router.post("/zakiy/decide", async (req, res) => {
 
     const memory = await loadMemory(sessionId);
 
+    // Load extended memory (anti-repetition context)
+    let memoryContext = { lastAdvice: "", lastTask: "", repetitionCount: 0 };
+    let rawMemoryJson: Record<string, unknown> = {};
+    try {
+      const memRow = await db.query.zakiyMemoryTable.findFirst({
+        where: eq(zakiyMemoryTable.sessionId, sessionId),
+      });
+      if (memRow?.memoryJson) {
+        rawMemoryJson = JSON.parse(memRow.memoryJson) as Record<string, unknown>;
+        memoryContext = {
+          lastAdvice: (rawMemoryJson.lastAdvice as string) ?? "",
+          lastTask: (rawMemoryJson.lastTask as string) ?? "",
+          repetitionCount: (rawMemoryJson.repetitionCount as number) ?? 0,
+        };
+      }
+    } catch {}
+
     const hour = currentHour;
     const timeOfDay =
       hour < 5 ? "ما قبل الفجر"
@@ -1098,12 +1115,56 @@ router.post("/zakiy/decide", async (req, res) => {
       todayTasks,
       timeOfDay,
       memoryTraits: memory.traits,
+      memoryContext,
     });
 
-    res.json({ ...decision, riskScore: risk.score, riskTriggers: risk.triggers });
+    // Update memory with this advice (async, non-blocking)
+    try {
+      const isRepeat =
+        memoryContext.lastAdvice !== "" &&
+        decision.action.target === memoryContext.lastAdvice;
+
+      const newMemoryJson = JSON.stringify({
+        ...rawMemoryJson,
+        lastAdvice: decision.action.target,
+        lastTask: decision.task?.id ?? memoryContext.lastTask,
+        repetitionCount: isRepeat ? memoryContext.repetitionCount + 1 : 1,
+      });
+
+      db.insert(zakiyMemoryTable)
+        .values({ sessionId, memoryJson: newMemoryJson })
+        .onConflictDoUpdate({
+          target: zakiyMemoryTable.sessionId,
+          set: { memoryJson: newMemoryJson },
+        })
+        .catch(() => {});
+    } catch {}
+
+    // Final validation — never return empty response
+    const safeMessage = decision.message?.trim() || "ابدأ بخطوة صغيرة — الله يستر ويعين.";
+    const safeTarget = decision.action?.target || "/dhikr";
+    const safeLabel = decision.actionLabel?.trim() || "ابدأ الآن";
+
+    res.json({
+      ...decision,
+      message: safeMessage,
+      action: { type: "redirect", target: safeTarget },
+      actionLabel: safeLabel,
+      riskScore: risk.score,
+      riskTriggers: risk.triggers,
+    });
   } catch (err) {
     console.error("[zakiy/decide]", err);
-    res.status(500).json({ error: "internal error" });
+    // Failsafe — never return empty/error to client
+    res.json({
+      message: "ابدأ بحاجة بسيطة… ذكر خفيف هيظبطك.",
+      action: { type: "redirect", target: "/dhikr" },
+      actionLabel: "ابدأ ذكر",
+      urgency: "low",
+      decisionType: "growth",
+      riskScore: 0,
+      riskTriggers: [],
+    });
   }
 });
 

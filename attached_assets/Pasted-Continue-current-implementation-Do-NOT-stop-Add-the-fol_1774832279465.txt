@@ -1,0 +1,127 @@
+Continue current implementation. Do NOT stop.
+
+Add the following as NON-BLOCKING improvements (apply if easy, otherwise defer):
+
+========================
+
+1. LOGGING (CRITICAL FOR DEBUGGING)
+   ========================
+
+Add structured logs inside zakiy-engine:
+
+log:
+
+* decisionType
+* riskScore
+* selectedTask.id
+* targetRoute
+* trustLevel
+
+Example:
+
+console.log('[ZAKIY]', {
+decisionType,
+riskScore,
+task: selectedTask?.id,
+target: action.target,
+trustLevel
+});
+
+Goal:
+We must be able to trace WHY Zakiy made a decision.
+
+========================
+2. FAILSAFE (IMPORTANT)
+=======================
+
+If anything fails in:
+
+* risk engine
+* task engine
+* AI generation
+
+Return safe fallback:
+
+{
+message: "ابدأ بحاجة بسيطة… ذكر خفيف هيظبطك",
+action: {
+type: "redirect",
+target: "/dhikr",
+label: "ابدأ ذكر"
+}
+}
+
+System must NEVER crash or return empty state.
+
+========================
+3. TIMEOUT FOR AI (MANDATORY)
+=============================
+
+If AI response takes > 2 seconds:
+
+* skip AI
+* return pre-defined message based on decisionType
+
+This keeps UX fast.
+
+========================
+4. API RESPONSE VALIDATION
+==========================
+
+Before returning response:
+
+Ensure:
+
+* message is not empty
+* target route exists
+* actionLabel exists
+
+Otherwise → fallback
+
+========================
+5. FRONTEND LOADING STATE
+=========================
+
+When calling /api/zakiy:
+
+* show loading indicator
+* disable button
+* prevent double click
+
+========================
+6. PREVENT DOUBLE REQUESTS
+==========================
+
+Debounce or lock request:
+
+User should NOT trigger multiple /zakiy calls rapidly.
+
+========================
+7. ROUTE SAFETY CHECK
+=====================
+
+Before navigation:
+
+Ensure route exists in router.
+
+If not → fallback to "/dhikr"
+
+========================
+8. ERROR UI (LIGHTWEIGHT)
+=========================
+
+If API fails:
+
+* show small toast:
+  "حصل خطأ بسيط… جرّب تاني"
+
+Do NOT block user.
+
+========================
+FINAL NOTE
+==========
+
+These are stability safeguards.
+
+They should NOT change architecture or flow.
+Only improve reliability and UX.

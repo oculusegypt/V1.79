@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useZakiyMode } from "@/context/ZakiyModeContext";
-import { useLocation } from "wouter";
 import { Sparkles, ArrowLeft, Loader2 } from "lucide-react";
 
 interface ZakiyPanelProps {
@@ -8,16 +7,11 @@ interface ZakiyPanelProps {
 }
 
 export function ZakiyPanel({ pageName }: ZakiyPanelProps) {
-  const { aiMode, decision, fetchDecision, isLoading } = useZakiyMode();
-  const [, navigate] = useLocation();
+  const { aiMode, trustLevel, decision, fetchDecision, navigateToDecision, isLoading } = useZakiyMode();
 
-  if (!aiMode) return null;
-
-  const handleAction = () => {
-    if (decision?.action?.target) {
-      navigate(decision.action.target);
-    }
-  };
+  // Level 0 → no auto suggestions (only on explicit button click in dashboard)
+  // Level 1+ → show ZakiyPanel
+  if (!aiMode || trustLevel < 1) return null;
 
   const urgencyColors: Record<string, string> = {
     low: "border-emerald-500/30 bg-emerald-950/40",
@@ -67,7 +61,7 @@ export function ZakiyPanel({ pageName }: ZakiyPanelProps) {
                 </p>
                 {decision.action.target && (
                   <button
-                    onClick={handleAction}
+                    onClick={navigateToDecision}
                     className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-white/70 hover:text-white transition-colors active:scale-95"
                   >
                     <span>{decision.actionLabel}</span>

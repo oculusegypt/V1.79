@@ -1,0 +1,153 @@
+Great implementation. The architecture is solid.
+
+Before finalizing, apply the following critical enhancements to ensure Zakiy behaves as a true intelligent guide (not just a rule executor):
+
+========================
+
+1. AI IS EXPRESSION, NOT DECISION
+   ========================
+
+IMPORTANT:
+
+Zakiy MUST NOT rely on GPT to decide actions.
+
+All decisions must remain rule-based (already implemented correctly).
+
+AI is ONLY responsible for:
+
+* message tone
+* emotional delivery
+* phrasing
+
+Do NOT move logic into prompts.
+
+========================
+2. ADD DECISION TYPE (MISSING LAYER)
+====================================
+
+Currently decision is inferred from conditions.
+
+Add explicit DecisionType:
+
+type DecisionType =
+| 'emergency'
+| 'repentance'
+| 'stabilize'
+| 'growth';
+
+Update zakiy-engine:
+
+* Map every rule to a DecisionType
+* Pass DecisionType to GPT
+
+Example:
+
+if (riskScore > 0.9) → type = 'emergency'
+if (inactiveDays >= 3) → type = 'repentance'
+default → 'growth'
+
+========================
+3. IMPROVE AI PROMPT INPUT
+==========================
+
+Current AI input is too shallow.
+
+Update AI input to include:
+
+{
+decisionType,
+riskScore,
+streakDays,
+inactivityDays,
+timeOfDay
+}
+
+This makes messages context-aware instead of generic.
+
+========================
+4. ADD MEMORY (CRITICAL)
+========================
+
+Use existing table: zakiy_memory
+
+Before generating message:
+
+* Check lastAdvice
+* If repeated → force variation
+
+Add:
+
+zakiyMemory = {
+lastAdvice: string;
+lastTask: string;
+repetitionCount: number;
+}
+
+Goal:
+Prevent robotic repetition.
+
+========================
+5. ADD SOFT INTERRUPTION LOGIC
+==============================
+
+Currently Zakiy only reacts on button click.
+
+Add passive trigger:
+
+IF:
+
+* inactivityMinutes > 20
+* AND aiMode = true
+
+THEN:
+
+* show ZakiyPanel suggestion automatically
+
+No redirect. Just suggestion.
+
+========================
+6. TRUST LEVEL BEHAVIOR FIX
+===========================
+
+Refine behavior:
+
+Level 0:
+
+* no auto suggestions (only on button click)
+
+Level 1:
+
+* allow ZakiyPanel
+
+Level 2:
+
+* allow task prioritization
+
+Level 3:
+
+* allow Emergency Overlay auto-trigger
+
+========================
+7. FUTURE HOOK (DO NOT IMPLEMENT NOW)
+=====================================
+
+Prepare hook for:
+
+predictRisk(context) → returns futureRiskScore
+
+This will later allow Zakiy to act BEFORE relapse.
+
+Do not implement now, just leave placeholder.
+
+========================
+FINAL NOTE
+==========
+
+The system is now:
+
+* deterministic in logic
+* human in expression
+* non-intrusive in UX
+* scalable for future intelligence
+
+Proceed with this refinement before any further features.

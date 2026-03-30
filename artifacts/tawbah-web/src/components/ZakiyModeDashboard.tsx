@@ -1,19 +1,24 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useZakiyMode } from "@/context/ZakiyModeContext";
 import { useUserProgress } from "@/hooks/use-progress";
-import { useLocation } from "wouter";
-import { Sparkles, Loader2, ArrowLeft, Flame, Shield, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Sparkles, Loader2, ArrowLeft, Flame, Shield,
+  AlertTriangle, ChevronDown, ChevronUp, X,
+} from "lucide-react";
 import { ZakiyEmergencyOverlay } from "./ZakiyEmergencyOverlay";
 
 export function ZakiyModeDashboard() {
-  const { decision, fetchDecision, isLoading, error, trustLevel } = useZakiyMode();
+  const {
+    decision, fetchDecision, navigateToDecision,
+    isLoading, error, clearError, trustLevel,
+  } = useZakiyMode();
   const { progress } = useUserProgress();
-  const [, navigate] = useLocation();
   const [started, setStarted] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
+  // Emergency overlay: only trustLevel >= 3 allows auto-trigger
   useEffect(() => {
     if (decision?.urgency === "emergency" && trustLevel >= 3) {
       setShowEmergency(true);
@@ -22,20 +27,15 @@ export function ZakiyModeDashboard() {
 
   const handleStart = async () => {
     setStarted(true);
+    clearError();
     await fetchDecision();
   };
 
-  const handleAction = () => {
-    if (decision?.action?.target) {
-      navigate(decision.action.target);
-    }
-  };
-
   const urgencyConfig = {
-    low: { color: "from-emerald-900/60 to-emerald-950/80", border: "border-emerald-500/20", icon: Shield, iconColor: "text-emerald-400", label: "مستقر" },
-    medium: { color: "from-amber-900/60 to-amber-950/80", border: "border-amber-500/30", icon: Flame, iconColor: "text-amber-400", label: "تحتاج متابعة" },
-    high: { color: "from-orange-900/60 to-orange-950/80", border: "border-orange-500/40", icon: Flame, iconColor: "text-orange-400", label: "يحتاج اهتمام" },
-    emergency: { color: "from-red-900/70 to-red-950/90", border: "border-red-500/50", icon: AlertTriangle, iconColor: "text-red-400", label: "طوارئ" },
+    low:       { color: "from-emerald-900/60 to-emerald-950/80", border: "border-emerald-500/20", icon: Shield,        iconColor: "text-emerald-400", label: "مستقر" },
+    medium:    { color: "from-amber-900/60 to-amber-950/80",     border: "border-amber-500/30",   icon: Flame,         iconColor: "text-amber-400",   label: "تحتاج متابعة" },
+    high:      { color: "from-orange-900/60 to-orange-950/80",   border: "border-orange-500/40",  icon: Flame,         iconColor: "text-orange-400",  label: "يحتاج اهتمام" },
+    emergency: { color: "from-red-900/70 to-red-950/90",         border: "border-red-500/50",     icon: AlertTriangle, iconColor: "text-red-400",     label: "طوارئ" },
   };
 
   const cfg = urgencyConfig[decision?.urgency ?? "low"];
@@ -51,6 +51,26 @@ export function ZakiyModeDashboard() {
 
       <div className="min-h-screen flex flex-col items-center justify-center px-5 pb-24" dir="rtl">
         <div className="w-full max-w-sm space-y-5">
+
+          {/* Error toast — non-blocking, dismissible */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-red-950/60 border border-red-500/30"
+              >
+                <p className="text-sm text-red-300">{error}</p>
+                <button
+                  onClick={clearError}
+                  className="text-white/40 hover:text-white/70 shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* User state summary */}
           {progress && (
@@ -79,7 +99,14 @@ export function ZakiyModeDashboard() {
             </motion.div>
           )}
 
-          {/* Main card */}
+          {/* Trust level indicator */}
+          {trustLevel === 0 && (
+            <p className="text-center text-xs text-white/30 pb-1">
+              مستوى الثقة: 0 — الاقتراحات تلقائية متوقفة
+            </p>
+          )}
+
+          {/* Main decision card */}
           {!started ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
@@ -97,7 +124,8 @@ export function ZakiyModeDashboard() {
               </div>
               <button
                 onClick={handleStart}
-                className="w-full py-4 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-lg transition-colors active:scale-95"
+                disabled={isLoading}
+                className="w-full py-4 rounded-2xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white font-bold text-lg transition-colors active:scale-95"
               >
                 ابدأ الآن
               </button>
@@ -110,20 +138,6 @@ export function ZakiyModeDashboard() {
             >
               <Loader2 className="w-10 h-10 animate-spin text-white/40" />
               <p className="text-white/50 text-sm">زكي يفكر…</p>
-            </motion.div>
-          ) : error ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-3xl bg-red-950/40 border border-red-500/20 p-8 text-center space-y-4"
-            >
-              <p className="text-red-300 text-sm">{error}</p>
-              <button
-                onClick={handleStart}
-                className="px-6 py-2 rounded-xl bg-white/10 text-white text-sm"
-              >
-                حاول مرة أخرى
-              </button>
             </motion.div>
           ) : decision ? (
             <motion.div
@@ -144,14 +158,14 @@ export function ZakiyModeDashboard() {
               <p className="text-white leading-relaxed text-base">{decision.message}</p>
 
               <button
-                onClick={handleAction}
+                onClick={navigateToDecision}
                 className="w-full py-4 rounded-2xl bg-white/15 hover:bg-white/20 text-white font-semibold flex items-center justify-between px-5 transition-colors active:scale-95"
               >
                 <span>{decision.actionLabel}</span>
                 <ArrowLeft className="w-5 h-5" />
               </button>
 
-              {/* Details toggle */}
+              {/* Why this suggestion? */}
               {decision.riskTriggers?.length > 0 && (
                 <button
                   onClick={() => setShowDetails(!showDetails)}
@@ -162,26 +176,30 @@ export function ZakiyModeDashboard() {
                 </button>
               )}
 
-              {showDetails && decision.riskTriggers?.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="space-y-1"
-                >
-                  {decision.riskTriggers.map((t, i) => (
-                    <p key={i} className="text-xs text-white/40 flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-white/30 inline-block" />
-                      {t}
-                    </p>
-                  ))}
-                </motion.div>
-              )}
+              <AnimatePresence>
+                {showDetails && decision.riskTriggers?.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-1"
+                  >
+                    {decision.riskTriggers.map((t, i) => (
+                      <p key={i} className="text-xs text-white/40 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-white/30 inline-block" />
+                        {t}
+                      </p>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <button
                 onClick={handleStart}
-                className="w-full text-center text-xs text-white/25 hover:text-white/40 transition-colors"
+                disabled={isLoading}
+                className="w-full text-center text-xs text-white/25 hover:text-white/40 disabled:opacity-30 transition-colors"
               >
-                اسأل زكي من جديد
+                {isLoading ? "جارٍ التحديث…" : "اسأل زكي من جديد"}
               </button>
             </motion.div>
           ) : null}
