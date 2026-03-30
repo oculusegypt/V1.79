@@ -1,0 +1,211 @@
+We will NOT replace the current system.
+All existing routes and pages must remain functional as they are.
+
+We are introducing a new layer: **AI-Assisted Mode (Zakiy Mode)**.
+
+The goal is:
+Keep manual navigation + add intelligent guidance on top.
+
+---
+
+## CORE RULE
+
+Do NOT remove or break existing routes.
+
+All pages (dhikr, journey, sos, quran, etc.) remain usable manually.
+
+Zakiy will act as a smart layer that:
+
+* Suggests actions
+* Guides the user
+* Intervenes ONLY when necessary
+
+---
+
+## 1. Add AI Mode (Global State)
+
+Create a global state:
+
+aiMode: boolean
+
+Default = false
+
+User can toggle it manually.
+
+---
+
+## 2. Add Toggle in UI
+
+In Home page:
+
+Add a button:
+
+"دع زكي يقودك"
+
+When enabled:
+→ aiMode = true
+
+---
+
+## 3. Modify Home Behavior
+
+### If aiMode = false:
+
+* Keep current dashboard behavior
+
+### If aiMode = true:
+
+* Replace dashboard with:
+
+* User current state
+
+* ONE primary button:
+  "ابدأ الآن"
+
+On click:
+→ call Zakiy API
+
+---
+
+## 4. Create Zakiy Entry Point
+
+POST /api/zakiy
+
+Returns:
+
+{
+message: string,
+action: {
+type: "redirect",
+target: string
+},
+task?: UnifiedTask
+}
+
+---
+
+## 5. Behavior in AI Mode
+
+### Step 1:
+
+User presses "ابدأ الآن"
+
+### Step 2:
+
+Call Zakiy
+
+### Step 3:
+
+Display:
+
+* message (from Zakiy)
+* action button (actionLabel)
+
+### Step 4:
+
+On click:
+→ navigate to route (e.g. /dhikr, /sos, /quran)
+
+---
+
+## 6. Soft Guidance (Important)
+
+Zakiy should NOT force navigation.
+
+Always:
+
+* show suggestion
+* user confirms action
+
+---
+
+## 7. Emergency Override
+
+If riskScore > 0.9:
+
+System can:
+
+* show full screen alert
+* vibrate / play sound
+* strongly suggest SOS
+
+BUT still require user confirmation to proceed.
+
+---
+
+## 8. Integrate with Task Engine
+
+Zakiy should call:
+
+getTodayTasks(context)
+
+Then choose:
+
+* best task
+* highest priority task
+
+---
+
+## 9. Add Trust Level System
+
+Create:
+
+trustLevel: number (0 → 3)
+
+Behavior:
+
+Level 0:
+
+* suggestions only
+
+Level 1:
+
+* suggest + highlight best task
+
+Level 2:
+
+* suggest + reorder tasks
+
+Level 3:
+
+* allow emergency interventions
+
+---
+
+## 10. Apply AI Mode Across Pages
+
+In key pages (Home, Dhikr, Journey):
+
+If aiMode = true:
+
+* show small Zakiy assistant panel
+* show current suggestion
+
+---
+
+## 11. DO NOT BREAK UX
+
+Manual navigation must always work.
+
+AI Mode is an enhancement layer, not a replacement.
+
+---
+
+## FINAL GOAL
+
+System should feel like:
+
+* A normal app (manual)
+* OR a guided experience (AI Mode)
+
+User chooses the mode.
+
+Zakiy assists, not controls.
+
+---
+
+## IMPORTANT
+
+Zakiy is a guide, not a controller.
+
+Do not create forced redirects except in extreme cases (high risk).

@@ -1,4 +1,7 @@
 import { Link, useLocation } from "wouter";
+import { useZakiyMode } from "@/context/ZakiyModeContext";
+import { ZakiyModeDashboard } from "@/components/ZakiyModeDashboard";
+import { ZakiyEmergencyOverlay } from "@/components/ZakiyEmergencyOverlay";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -3365,8 +3368,16 @@ function DailyFocusCard() {
 
 export default function Home() {
   const { isLoading } = useAppUserProgress();
+  const { aiMode, toggleAiMode, decision } = useZakiyMode();
   const [showSosToast, setShowSosToast] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(false);
+
+  useEffect(() => {
+    if (decision?.urgency === "emergency") {
+      setShowEmergency(true);
+    }
+  }, [decision?.urgency]);
 
   // Unified order for all sections (grid + list mixed freely)
   const [combinedOrder, setCombinedOrder] =
@@ -3417,11 +3428,38 @@ export default function Home() {
 
   return (
     <div className="flex flex-col flex-1 pb-8">
+      <ZakiyEmergencyOverlay
+        visible={showEmergency}
+        message={decision?.message ?? ""}
+        onDismiss={() => setShowEmergency(false)}
+      />
+
       <AnimatePresence>
         {showSosToast && (
           <SosReturnToast onDismiss={() => setShowSosToast(false)} />
         )}
       </AnimatePresence>
+
+      {/* Zakiy Mode Toggle */}
+      <div className="flex justify-center pt-3 pb-1 px-5" dir="rtl">
+        <button
+          onClick={toggleAiMode}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95 border ${
+            aiMode
+              ? "bg-indigo-500/20 border-indigo-400/40 text-indigo-300"
+              : "bg-white/5 border-white/10 text-white/40 hover:text-white/60"
+          }`}
+        >
+          <Sparkles className={`w-4 h-4 ${aiMode ? "text-indigo-400" : "text-white/30"}`} />
+          {aiMode ? "وضع زكي مفعّل — اضغط للإيقاف" : "دع زكي يقودك"}
+        </button>
+      </div>
+
+      {/* AI Mode replaces dashboard */}
+      {aiMode ? (
+        <ZakiyModeDashboard />
+      ) : (
+        <>
       {/* Hero + bell overlay */}
       <div className="relative">
         <IslamicHero />
@@ -3544,6 +3582,8 @@ export default function Home() {
           {editMode ? "إنهاء التنظيم" : "إعادة ترتيب البطاقات"}
         </motion.button>
       </div>
+        </>
+      )}
     </div>
   );
 }

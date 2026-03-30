@@ -6,6 +6,7 @@ import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 import { NotificationsProvider, useNotifications } from "@/context/NotificationsContext";
 import { AppNotificationsProvider } from "@/context/AppNotificationsContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { ZakiyModeProvider } from "@/context/ZakiyModeContext";
 import { DuaPeakModal } from "@/components/DuaPeakModal";
 import { AdhkarModal } from "@/components/AdhkarModal";
 import { useEffect, useState } from "react";
@@ -170,12 +171,14 @@ export default function App() {
         <NotificationsProvider>
           <AppNotificationsProvider>
             <QueryClientProvider client={queryClient}>
-              <TooltipProvider>
-                <Router />
-                <DuaPeakModalBridge />
-                <AdhkarModalBridge />
-                <Toaster />
-              </TooltipProvider>
+              <ZakiyModeProvider>
+                <TooltipProvider>
+                  <Router />
+                  <DuaPeakModalBridge />
+                  <AdhkarModalBridge />
+                  <Toaster />
+                </TooltipProvider>
+              </ZakiyModeProvider>
             </QueryClientProvider>
           </AppNotificationsProvider>
         </NotificationsProvider>

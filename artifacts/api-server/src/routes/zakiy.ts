@@ -2,8 +2,11 @@ import { Router, type IRouter } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { speechToText, ensureCompatibleFormat } from "@workspace/integrations-openai-ai-server/audio";
 import { db } from "@workspace/db";
-import { zakiyMemoryTable, journalEntriesTable, userProgressTable } from "@workspace/db/schema";
+import { zakiyMemoryTable, journalEntriesTable, userProgressTable, notificationSettingsTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { analyzeRisk } from "../core/risk-engine.js";
+import { getTodayTasks } from "../core/task-engine.js";
+import { decide } from "../core/zakiy-engine.js";
 
 const router: IRouter = Router();
 
@@ -1012,6 +1015,95 @@ router.get("/zakiy/anniversary", async (req, res) => {
   } catch (err) {
     console.error("Anniversary check error:", err);
     res.json({ anniversary: null });
+  }
+});
+
+// ══════════════════════════════════════════
+// ZAKIY DECIDE — AI Mode Entry Point
+// ══════════════════════════════════════════
+
+router.post("/zakiy/decide", async (req, res) => {
+  try {
+    const { sessionId, trustLevel = 0 } = req.body as {
+      sessionId: string;
+      trustLevel?: number;
+    };
+
+    if (!sessionId) {
+      res.status(400).json({ error: "sessionId required" });
+      return;
+    }
+
+    const progress = await db.query.userProgressTable.findFirst({
+      where: eq(userProgressTable.sessionId, sessionId),
+    });
+
+    const inactiveDays = (() => {
+      if (!progress?.lastActiveDate) return 0;
+      const last = new Date(progress.lastActiveDate);
+      const now = new Date();
+      return Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+    })();
+
+    const currentHour = new Date().getHours();
+
+    let dangerHours: number[] = [];
+    try {
+      const notifRow = await db.query.notificationSettingsTable.findFirst({
+        where: eq(notificationSettingsTable.sessionId, sessionId),
+      });
+      if (notifRow?.settingsJson) {
+        const parsed = JSON.parse(notifRow.settingsJson) as {
+          dangerHours?: number[];
+        };
+        dangerHours = parsed.dangerHours ?? [];
+      }
+    } catch {}
+
+    const risk = analyzeRisk({
+      inactiveDays,
+      lastRelapse: null,
+      streakDays: progress?.streakDays ?? 0,
+      currentHour,
+      dangerHours,
+    });
+
+    const todayTasks = await getTodayTasks(
+      sessionId,
+      progress?.currentPhase ?? 1
+    );
+
+    const memory = await loadMemory(sessionId);
+
+    const hour = currentHour;
+    const timeOfDay =
+      hour < 5 ? "ما قبل الفجر"
+      : hour < 7 ? "وقت الفجر"
+      : hour < 12 ? "الصباح"
+      : hour < 14 ? "وقت الظهر"
+      : hour < 17 ? "بعد الظهر"
+      : hour < 19 ? "وقت العصر"
+      : hour < 21 ? "المغرب والعشاء"
+      : "الليل";
+
+    const decision = await decide({
+      sessionId,
+      streakDays: progress?.streakDays ?? 0,
+      inactiveDays,
+      sinCategory: progress?.sinCategory ?? "other",
+      riskScore: risk.score,
+      currentPhase: progress?.currentPhase ?? 1,
+      covenantSigned: progress?.covenantSigned ?? false,
+      trustLevel,
+      todayTasks,
+      timeOfDay,
+      memoryTraits: memory.traits,
+    });
+
+    res.json({ ...decision, riskScore: risk.score, riskTriggers: risk.triggers });
+  } catch (err) {
+    console.error("[zakiy/decide]", err);
+    res.status(500).json({ error: "internal error" });
   }
 });
 

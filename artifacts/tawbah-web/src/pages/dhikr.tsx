@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ZakiyPanel } from "@/components/ZakiyPanel";
 import { useAppDhikrCount, useAppIncrementDhikr } from "@/hooks/use-app-data";
 import type { IncrementDhikrRequestDhikrType } from "@workspace/api-client-react";
 import { recordEvent } from "@/components/live-stats";
@@ -294,6 +295,7 @@ export default function Dhikr() {
           )}
         </div>
       </div>
+      <ZakiyPanel pageName="الذكر" />
     </>
   );
 }

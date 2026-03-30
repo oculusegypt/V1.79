@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ZakiyPanel } from "@/components/ZakiyPanel";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2, Star, Trophy, Flame, ArrowRight,
@@ -460,6 +461,7 @@ export default function Journey30() {
           </div>
         )}
       </div>
+      <ZakiyPanel pageName="رحلة التوبة" />
     </div>
   );
 }
