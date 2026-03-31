@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { API_CONFIG } from "./api-config";
 
 declare global {
   interface Window {
@@ -27,7 +28,7 @@ export function getApiBase(): string {
       ? localStorage.getItem("tawbah_api_base")
       : null;
     if (stored) return stored;
-    return "https://14--Taw-12.replit.app/api";
+    return API_CONFIG.serverUrl;
   }
   return "/api";
 }

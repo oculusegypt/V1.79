@@ -14,6 +14,7 @@ import {
 interface AppNotificationsContextValue {
   unreadCount: number;
   notifications: AppNotification[];
+  isLoaded: boolean;
   reloadNotifications: () => void;
   addNotification: (notif: {
     id?: string;
@@ -33,10 +34,12 @@ const AppNotificationsContext = createContext<AppNotificationsContextValue | nul
 export function AppNotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(() => loadNotifications());
   const [unreadCount, setUnreadCount] = useState(() => getUnreadCount());
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const syncState = useCallback((notifs: AppNotification[]) => {
     setNotifications(notifs);
     setUnreadCount(notifs.filter((n) => !n.isRead).length);
+    setIsLoaded(true);
   }, []);
 
   // Load from API on mount
@@ -122,7 +125,7 @@ export function AppNotificationsProvider({ children }: { children: ReactNode }) 
 
   return (
     <AppNotificationsContext.Provider value={{
-      unreadCount, notifications, reloadNotifications,
+      unreadCount, notifications, isLoaded, reloadNotifications,
       addNotification, markRead, markAllRead, removeNotification,
     }}>
       {children}
