@@ -1,4 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
 import {
   type NotificationSettings,
   DEFAULT_SETTINGS,
@@ -12,12 +19,41 @@ import {
   subscribeToPush,
   showViaSW,
 } from "@/lib/notifications";
-import { hasFiredToday, markFiredToday, addToInboxApi } from "@/lib/app-notifications";
-import { playTakbeer, preloadTakbeer, playAzan, preloadAzan, playDuaPeak, preloadDuaPeak, playAzkarSabah, preloadAzkarSabah, playAzkarMasaa, preloadAzkarMasaa, stopAzkarSabah, stopAzkarMasaa } from "@/lib/takbeer";
-import { calcDuaPower, duaPeakCooledDown, markDuaPeakFired } from "@/lib/dua-power";
+import {
+  hasFiredToday,
+  markFiredToday,
+  addToInboxApi,
+} from "@/lib/app-notifications";
+import {
+  playTakbeer,
+  preloadTakbeer,
+  playAzan,
+  preloadAzan,
+  playDuaPeak,
+  preloadDuaPeak,
+  playAzkarSabah,
+  preloadAzkarSabah,
+  playAzkarMasaa,
+  preloadAzkarMasaa,
+  stopAzkarSabah,
+  stopAzkarMasaa,
+} from "@/lib/takbeer";
+import {
+  calcDuaPower,
+  duaPeakCooledDown,
+  markDuaPeakFired,
+} from "@/lib/dua-power";
 import { isNativeApp, getApiBase } from "@/lib/api-base";
-import { initCapacitorPush, getCapacitorPermission, requestCapacitorPermission } from "@/lib/capacitor-push";
-import { createNotificationChannels, showLocalNotifNow, requestLocalNotifPermission } from "@/lib/native-notifications";
+import {
+  initCapacitorPush,
+  getCapacitorPermission,
+  requestCapacitorPermission,
+} from "@/lib/capacitor-push";
+import {
+  createNotificationChannels,
+  showLocalNotifNow,
+  requestLocalNotifPermission,
+} from "@/lib/native-notifications";
 
 const API_BASE = getApiBase();
 
@@ -42,19 +78,30 @@ async function syncSettingsToApi(s: NotificationSettings): Promise<void> {
 async function loadSettingsFromApi(): Promise<NotificationSettings | null> {
   try {
     const sessionId = localStorage.getItem("tawbah_session") ?? "guest";
-    const res = await fetch(`${API_BASE}/notifications/settings?sessionId=${encodeURIComponent(sessionId)}`);
+    const res = await fetch(
+      `${API_BASE}/notifications/settings?sessionId=${encodeURIComponent(sessionId)}`,
+    );
     if (!res.ok) return null;
-    const row = await res.json() as {
+    const row = (await res.json()) as {
       settingsJson: string;
-      prayerCity?: string; prayerCountry?: string;
-      prayerLat?: string; prayerLng?: string;
+      prayerCity?: string;
+      prayerCountry?: string;
+      prayerLat?: string;
+      prayerLng?: string;
     } | null;
     if (!row || !row.settingsJson) return null;
-    if (row.prayerCity && !localStorage.getItem("prayerCity")) localStorage.setItem("prayerCity", row.prayerCity);
-    if (row.prayerCountry && !localStorage.getItem("prayerCountry")) localStorage.setItem("prayerCountry", row.prayerCountry);
-    if (row.prayerLat && !localStorage.getItem("prayerLat")) localStorage.setItem("prayerLat", row.prayerLat);
-    if (row.prayerLng && !localStorage.getItem("prayerLng")) localStorage.setItem("prayerLng", row.prayerLng);
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(row.settingsJson) } as NotificationSettings;
+    if (row.prayerCity && !localStorage.getItem("prayerCity"))
+      localStorage.setItem("prayerCity", row.prayerCity);
+    if (row.prayerCountry && !localStorage.getItem("prayerCountry"))
+      localStorage.setItem("prayerCountry", row.prayerCountry);
+    if (row.prayerLat && !localStorage.getItem("prayerLat"))
+      localStorage.setItem("prayerLat", row.prayerLat);
+    if (row.prayerLng && !localStorage.getItem("prayerLng"))
+      localStorage.setItem("prayerLng", row.prayerLng);
+    return {
+      ...DEFAULT_SETTINGS,
+      ...JSON.parse(row.settingsJson),
+    } as NotificationSettings;
   } catch {
     return null;
   }
@@ -77,16 +124,23 @@ interface NotificationsContextValue {
   hideAdhkar: () => void;
 }
 
-const NotificationsContext = createContext<NotificationsContextValue | null>(null);
+const NotificationsContext = createContext<NotificationsContextValue | null>(
+  null,
+);
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<NotificationSettings>(() => loadSettings());
+  const [settings, setSettings] = useState<NotificationSettings>(() =>
+    loadSettings(),
+  );
   const native = isNativeApp();
-  const [permission, setPermission] = useState<NotificationPermission>(() => native ? "default" : getPermission());
+  const [permission, setPermission] = useState<NotificationPermission>(() =>
+    native ? "default" : getPermission(),
+  );
   const [duaPeakVisible, setDuaPeakVisible] = useState(false);
   const [adhkarVisible, setAdhkarVisible] = useState(false);
   const [adhkarType, setAdhkarType] = useState<AdhkarType>("morning");
-  const supported = native || ("Notification" in window && "serviceWorker" in navigator);
+  const supported =
+    native || ("Notification" in window && "serviceWorker" in navigator);
 
   // ── On mount: check if opened from a notification click (?adhkar=morning/evening) ──
   useEffect(() => {
@@ -102,7 +156,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Preload audio files so they're ready for instant playback
-  useEffect(() => { preloadTakbeer(); preloadAzan(); preloadDuaPeak(); preloadAzkarSabah(); preloadAzkarMasaa(); }, []);
+  useEffect(() => {
+    preloadTakbeer();
+    preloadAzan();
+    preloadDuaPeak();
+    preloadAzkarSabah();
+    preloadAzkarMasaa();
+  }, []);
 
   // Register SW on mount and re-subscribe to push if already enabled
   useEffect(() => {
@@ -113,7 +173,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       // Request local notification permission and cache it
       void requestLocalNotifPermission().then((granted) => {
         if (granted) {
-          try { localStorage.setItem("native_notif_permission", "granted"); } catch {}
+          try {
+            localStorage.setItem("native_notif_permission", "granted");
+          } catch {}
           setPermission("granted");
         }
       });
@@ -123,12 +185,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         void initCapacitorPush({
           onToken: () => {},
           onNotification: (title, body) => {
-            void addToInboxApi({ type: "reminder", title, body, icon: "bell", color: "#4A90B8" });
+            void addToInboxApi({
+              type: "reminder",
+              title,
+              body,
+              icon: "bell",
+              color: "#4A90B8",
+            });
           },
         }).then((ok) => {
           if (ok) {
             setPermission("granted");
-            try { localStorage.setItem("native_notif_permission", "granted"); } catch {}
+            try {
+              localStorage.setItem("native_notif_permission", "granted");
+            } catch {}
           }
         });
       }
@@ -183,7 +253,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (document.visibilityState === "visible") reschedule();
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [supported, reschedule]);
 
   // ── Listen for SW-fired notifications (push) → add to in-app inbox ───────────
@@ -202,13 +273,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       if (event.data?.type === "NOTIFICATION_FIRED") {
         const { tag, title, body } = event.data as {
-          tag: string; title: string; body: string; url: string;
+          tag: string;
+          title: string;
+          body: string;
+          url: string;
         };
         // Play Azan for prayer notifications (if enabled)
         if (tag.startsWith("prayer-") && settings.prayerAlertSound) {
           playAzan();
         }
-        if ((tag === "dua-peak-last-third" || tag === "dua-peak-friday") && settings.duaPeakAlert) {
+        if (
+          (tag === "dua-peak-last-third" || tag === "dua-peak-friday") &&
+          settings.duaPeakAlert
+        ) {
           playDuaPeak();
           setDuaPeakVisible(true);
         }
@@ -223,12 +300,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
         if (!hasFiredToday(tag)) {
           markFiredToday(tag);
-          void addToInboxApi({ type: "reminder", title, body, icon: "bell", color: "#4A90B8" });
+          void addToInboxApi({
+            type: "reminder",
+            title,
+            body,
+            icon: "bell",
+            color: "#4A90B8",
+          });
         }
       }
     };
     navigator.serviceWorker.addEventListener("message", handleSwMessage);
-    return () => navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+    return () =>
+      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
   }, [supported]);
 
   // ── In-app polling every 30s — works on ALL pages while app is open ───────────
@@ -251,15 +335,40 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
               // Native: use LocalNotifications for real status-bar notification with sound
               let channelId = "reminder";
               let sound = "takbeer";
-              if (n.tag.startsWith("prayer-")) { channelId = "prayer"; sound = "takbeer"; }
-              else if (n.tag === "morning-adhkar") { channelId = "adhkar"; sound = "azkar_sabah"; }
-              else if (n.tag === "evening-adhkar") { channelId = "adhkar"; sound = "azkar_masaa"; }
-              await showLocalNotifNow({ title: n.title, body: n.body, tag: n.tag, channelId, sound, url: n.url ?? "/" });
+              if (n.tag.startsWith("prayer-")) {
+                channelId = "prayer";
+                sound = "azan";
+              } else if (n.tag === "morning-adhkar") {
+                channelId = "adhkar";
+                sound = "azkar_sabah";
+              } else if (n.tag === "evening-adhkar") {
+                channelId = "adhkar";
+                sound = "azkar_masaa";
+              }
+              await showLocalNotifNow({
+                title: n.title,
+                body: n.body,
+                tag: n.tag,
+                channelId,
+                sound,
+                url: n.url ?? "/",
+              });
             } else {
               // Web: show via Service Worker
-              await showViaSW({ title: n.title, body: n.body, tag: n.tag, url: n.url ?? "/" });
+              await showViaSW({
+                title: n.title,
+                body: n.body,
+                tag: n.tag,
+                url: n.url ?? "/",
+              });
             }
-            void addToInboxApi({ type: "reminder", title: n.title, body: n.body, icon: "bell", color: "#4A90B8" });
+            void addToInboxApi({
+              type: "reminder",
+              title: n.title,
+              body: n.body,
+              icon: "bell",
+              color: "#4A90B8",
+            });
           }
         }
       }
@@ -289,7 +398,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const diff = now - fireAt;
         // Key includes the configured time — changing the time resets the lock
         const morningKey = `morning-adhkar-modal_${settings.morningAdhkarTime}`;
-        if (diff >= 0 && diff <= ADHKAR_WINDOW_MS && !hasFiredToday(morningKey)) {
+        if (
+          diff >= 0 &&
+          diff <= ADHKAR_WINDOW_MS &&
+          !hasFiredToday(morningKey)
+        ) {
           markFiredToday(morningKey);
           setAdhkarType("morning");
           setAdhkarVisible(true);
@@ -299,7 +412,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const fireAt = getTimeMs(settings.eveningAdhkarTime);
         const diff = now - fireAt;
         const eveningKey = `evening-adhkar-modal_${settings.eveningAdhkarTime}`;
-        if (diff >= 0 && diff <= ADHKAR_WINDOW_MS && !hasFiredToday(eveningKey)) {
+        if (
+          diff >= 0 &&
+          diff <= ADHKAR_WINDOW_MS &&
+          !hasFiredToday(eveningKey)
+        ) {
           markFiredToday(eveningKey);
           setAdhkarType("evening");
           setAdhkarVisible(true);
@@ -310,7 +427,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     checkAdhkar();
     const interval = setInterval(checkAdhkar, ADHKAR_CHECK_INTERVAL);
     return () => clearInterval(interval);
-  }, [settings.morningAdhkar, settings.morningAdhkarTime, settings.eveningAdhkar, settings.eveningAdhkarTime]);
+  }, [
+    settings.morningAdhkar,
+    settings.morningAdhkarTime,
+    settings.eveningAdhkar,
+    settings.eveningAdhkarTime,
+  ]);
 
   // ── 5-minute Dua Peak polling — shows modal + plays takbeer when score = 100 ──
   useEffect(() => {
@@ -369,9 +491,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("push_last_error");
         localStorage.removeItem("push_stage");
       } catch {}
-      try { localStorage.setItem("push_stage", "native_enable_start"); } catch {}
+      try {
+        localStorage.setItem("push_stage", "native_enable_start");
+      } catch {}
       // Force Android permission request from a user gesture (button click)
-      try { localStorage.setItem("push_stage", "requesting_permission"); } catch {}
+      try {
+        localStorage.setItem("push_stage", "requesting_permission");
+      } catch {}
       let perm: NotificationPermission = "default";
       try {
         perm = await Promise.race([
@@ -381,51 +507,91 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           ),
         ]);
         if (perm === "default") {
-          try { localStorage.setItem("push_stage", "permission_request_timeout_or_default"); } catch {}
+          try {
+            localStorage.setItem(
+              "push_stage",
+              "permission_request_timeout_or_default",
+            );
+          } catch {}
         }
       } catch {
-        try { localStorage.setItem("push_stage", "permission_request_failed"); } catch {}
+        try {
+          localStorage.setItem("push_stage", "permission_request_failed");
+        } catch {}
         perm = "default";
       }
       setPermission(perm);
-      try { localStorage.setItem("push_stage", `permission_${perm}`); } catch {}
+      try {
+        localStorage.setItem("push_stage", `permission_${perm}`);
+      } catch {}
       // Some Android builds (and Android < 13) can return "default" while notifications still work.
       // Only treat explicit "denied" as a blocker.
       if (perm === "denied") return false;
 
       let lastErr = "";
-      try { localStorage.setItem("push_stage", "init_push_start"); } catch {}
-      console.log("[Notifications] enableNotifications: starting native push init");
+      try {
+        localStorage.setItem("push_stage", "init_push_start");
+      } catch {}
+      console.log(
+        "[Notifications] enableNotifications: starting native push init",
+      );
       const ok = await initCapacitorPush({
         onToken: (token) => {
-          console.log("[Notifications] enableNotifications: token received", token ? "(redacted)" : "(empty)");
-          try { localStorage.setItem("push_stage", "token_received"); } catch {}
+          console.log(
+            "[Notifications] enableNotifications: token received",
+            token ? "(redacted)" : "(empty)",
+          );
+          try {
+            localStorage.setItem("push_stage", "token_received");
+          } catch {}
         },
         onNotification: (title, body) => {
-          console.log("[Notifications] enableNotifications: notification received", title, body);
-          void addToInboxApi({ type: "reminder", title, body, icon: "bell", color: "#4A90B8" });
+          console.log(
+            "[Notifications] enableNotifications: notification received",
+            title,
+            body,
+          );
+          void addToInboxApi({
+            type: "reminder",
+            title,
+            body,
+            icon: "bell",
+            color: "#4A90B8",
+          });
         },
-        onError: (e) => { 
-          lastErr = e; 
-          console.error("[Notifications] enableNotifications error:", e); 
-          try { localStorage.setItem("push_last_error", e || "unknown_error"); } catch {}
+        onError: (e) => {
+          lastErr = e;
+          console.error("[Notifications] enableNotifications error:", e);
+          try {
+            localStorage.setItem("push_last_error", e || "unknown_error");
+          } catch {}
         },
       });
-      console.log("[Notifications] enableNotifications: initCapacitorPush returned", ok);
+      console.log(
+        "[Notifications] enableNotifications: initCapacitorPush returned",
+        ok,
+      );
       if (!ok) {
-        try { 
-          console.log("[Notifications] enableNotifications: saving error to localStorage", lastErr || "unknown_error");
-          localStorage.setItem("push_last_error", lastErr || "unknown_error"); 
+        try {
+          console.log(
+            "[Notifications] enableNotifications: saving error to localStorage",
+            lastErr || "unknown_error",
+          );
+          localStorage.setItem("push_last_error", lastErr || "unknown_error");
         } catch {}
         return false;
       }
       // Mark as granted inside the app so settings UI unlocks once native push is working.
       setPermission("granted");
-      try { localStorage.setItem("native_notif_permission", "granted"); } catch {}
+      try {
+        localStorage.setItem("native_notif_permission", "granted");
+      } catch {}
       // Also ensure LocalNotifications permission for scheduled/timed notifications
       void requestLocalNotifPermission().then((localOk) => {
         if (localOk) {
-          try { localStorage.setItem("native_notif_permission", "granted"); } catch {}
+          try {
+            localStorage.setItem("native_notif_permission", "granted");
+          } catch {}
         }
       });
       updateSettings({ enabled: true });
@@ -445,12 +611,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [updateSettings]);
 
   return (
-    <NotificationsContext.Provider value={{
-      settings, permission, supported,
-      updateSettings, enableNotifications, disableNotifications, reschedule,
-      duaPeakVisible, hideDuaPeak,
-      adhkarVisible, adhkarType, hideAdhkar,
-    }}>
+    <NotificationsContext.Provider
+      value={{
+        settings,
+        permission,
+        supported,
+        updateSettings,
+        enableNotifications,
+        disableNotifications,
+        reschedule,
+        duaPeakVisible,
+        hideDuaPeak,
+        adhkarVisible,
+        adhkarType,
+        hideAdhkar,
+      }}
+    >
       {children}
     </NotificationsContext.Provider>
   );
@@ -458,6 +634,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
 export function useNotifications() {
   const ctx = useContext(NotificationsContext);
-  if (!ctx) throw new Error("useNotifications must be used inside NotificationsProvider");
+  if (!ctx)
+    throw new Error(
+      "useNotifications must be used inside NotificationsProvider",
+    );
   return ctx;
 }
