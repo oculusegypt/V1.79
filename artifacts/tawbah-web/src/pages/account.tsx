@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { useSettings, QURAN_RECITERS, ACCENT_OPTIONS, type AccentColor } from "@/context/SettingsContext";
 import { useNotifications } from "@/context/NotificationsContext";
-import { useAppUserProgress } from "@/hooks/use-app-data";
+import { useAppUserProgress, useAppDhikrCount, useAppHabits } from "@/hooks/use-app-data";
+import { useQuery } from "@tanstack/react-query";
+import { getAuthHeader } from "@/lib/auth-client";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "framer-motion";
@@ -179,10 +181,27 @@ export default function Account() {
     window.dispatchEvent(new CustomEvent("hero-bg-light-changed", { detail: null }));
   };
 
+  const { data: dhikrData } = useAppDhikrCount();
+  const { data: habits } = useAppHabits();
+  const { data: journey30 } = useQuery<{ completedCount: number; currentDay: number; streakDays: number }>({
+    queryKey: ["journey30-account"],
+    queryFn: async () => {
+      const res = await fetch("/api/journey30", { headers: { ...getAuthHeader() } });
+      if (!res.ok) throw new Error();
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
   const dayCount = progress?.day40Progress ?? 0;
   const streak = progress?.streakDays ?? 0;
   const signed = progress?.covenantSigned;
-  const phase = progress?.currentPhase ?? "—";
+  const dhikrToday = dhikrData?.istighfar ?? 0;
+  const habitsCompleted = habits?.filter(h => h.completed).length ?? 0;
+  const habitsTotal = habits?.length ?? 0;
+  const journeyDays = journey30?.completedCount ?? 0;
 
   return (
     <div className="flex flex-col flex-1 pb-8 px-5 pt-5">
@@ -226,19 +245,36 @@ export default function Account() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="grid grid-cols-3 gap-3 mb-5"
+        className="grid grid-cols-3 gap-2.5 mb-5"
       >
+        {/* Row 1 */}
         <div className="bg-card border border-border rounded-2xl p-3 text-center">
-          <span className="text-2xl font-bold text-primary">{dayCount}</span>
-          <p className="text-[10px] text-muted-foreground mt-0.5">يوم في الخطة</p>
+          <span className="text-2xl font-bold text-primary">{streak}</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">🔥 يوم متواصل</p>
+        </div>
+        <div className="bg-card border border-amber-400/25 rounded-2xl p-3 text-center">
+          <span className="text-2xl font-bold text-amber-500">{journeyDays}</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">📅 من ٣٠ يوماً</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-3 text-center">
-          <span className="text-2xl font-bold text-amber-500">{streak}</span>
-          <p className="text-[10px] text-muted-foreground mt-0.5">يوم متواصل</p>
+          <span className="text-2xl font-bold text-emerald-500">{dayCount}</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">🗓 يوم في الخطة</p>
         </div>
-        <div className="bg-card border border-border rounded-2xl p-3 text-center">
-          <span className="text-2xl font-bold text-emerald-500">{signed ? "✓" : "—"}</span>
-          <p className="text-[10px] text-muted-foreground mt-0.5">العهد مع الله</p>
+
+        {/* Row 2 */}
+        <div className="bg-card border border-blue-400/25 rounded-2xl p-3 text-center">
+          <span className="text-2xl font-bold text-blue-500">{dhikrToday}</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">📿 استغفار اليوم</p>
+        </div>
+        <div className="bg-card border border-violet-400/25 rounded-2xl p-3 text-center">
+          <span className="text-xl font-bold text-violet-500">
+            {habitsTotal > 0 ? `${habitsCompleted}/${habitsTotal}` : "—"}
+          </span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">✅ عادات اليوم</p>
+        </div>
+        <div className="bg-card border border-emerald-400/25 rounded-2xl p-3 text-center">
+          <span className="text-2xl font-bold text-emerald-600">{signed ? "✓" : "—"}</span>
+          <p className="text-[10px] text-muted-foreground mt-0.5">🤲 العهد مع الله</p>
         </div>
       </motion.div>
 

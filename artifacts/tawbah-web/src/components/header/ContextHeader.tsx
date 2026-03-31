@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +80,7 @@ export function ContextHeader({
             className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-muted/70 active:scale-95 transition-all text-muted-foreground hover:text-foreground shrink-0"
             aria-label="رجوع"
           >
-            <ArrowRight size={20} />
+            <ChevronRight size={22} />
           </button>
         )}
 

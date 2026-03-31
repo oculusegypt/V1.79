@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +68,7 @@ export function HeroHeader({
               className="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 hover:bg-black/30 active:scale-95 backdrop-blur-sm transition-all text-white shrink-0"
               aria-label="رجوع"
             >
-              <ArrowRight size={18} />
+              <ChevronRight size={20} />
             </button>
           )}
 

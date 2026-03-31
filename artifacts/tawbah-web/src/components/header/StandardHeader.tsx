@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface StandardHeaderProps {
@@ -50,18 +49,15 @@ export function StandardHeader({
   };
 
   return (
-    <motion.div
+    <div
       className={cn(
-        "sticky top-0 z-30 transition-all",
+        "sticky top-0 z-30 transition-all duration-200",
         scrolled
-          ? "bg-background/95 backdrop-blur-md shadow-sm shadow-black/5"
-          : "bg-background/80 backdrop-blur-sm",
-        "border-b",
-        scrolled ? "border-border/60" : "border-border/30",
+          ? "bg-background/95 backdrop-blur-md shadow-sm shadow-black/5 border-b border-border/60"
+          : "bg-background/80 backdrop-blur-sm border-b border-border/30",
         className,
       )}
-      animate={{ height: scrolled ? 52 : 58 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
+      style={{ height: scrolled ? 52 : 58 }}
     >
       <div className="flex items-center h-full px-2 relative">
         {showBack && (
@@ -70,7 +66,7 @@ export function StandardHeader({
             className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-muted/70 active:scale-95 transition-all text-muted-foreground hover:text-foreground shrink-0"
             aria-label="رجوع"
           >
-            <ArrowRight size={20} />
+            <ChevronRight size={22} />
           </button>
         )}
 
@@ -79,30 +75,28 @@ export function StandardHeader({
             {icon && (
               <span className="text-primary shrink-0">{icon}</span>
             )}
-            <motion.h1
-              className="font-bold text-foreground leading-tight"
-              animate={{ fontSize: scrolled ? "14px" : "15px" }}
-              transition={{ duration: 0.22 }}
+            <h1
+              className="font-bold text-foreground leading-tight transition-all duration-200"
+              style={{ fontSize: scrolled ? 14 : 15 }}
             >
               {title}
-            </motion.h1>
+            </h1>
           </div>
           {subtitle && (
-            <motion.p
-              className="text-muted-foreground leading-none mt-0.5"
-              animate={{
-                fontSize: scrolled ? "9px" : "10px",
+            <p
+              className="text-muted-foreground leading-none mt-0.5 transition-all duration-200"
+              style={{
+                fontSize: scrolled ? 9 : 10,
                 opacity: scrolled ? 0.7 : 1,
               }}
-              transition={{ duration: 0.22 }}
             >
               {subtitle}
-            </motion.p>
+            </p>
           )}
         </div>
 
         <div className="mr-auto shrink-0">{right}</div>
       </div>
-    </motion.div>
+    </div>
   );
 }
