@@ -2,7 +2,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio3\jbr"
 $env:PATH = "$env:JAVA_HOME\bin;" + $env:PATH
 java -version
 Write-Host "---"
-$webDir = "C:\xampp\htdocs\Tawbah-Ai-master\artifacts\tawbah-web"
+$webDir = "C:\Users\sd\Documents\GitHub\v177\artifacts\tawbah-web"
 
 Write-Host "Building web assets..."
 Push-Location $webDir
