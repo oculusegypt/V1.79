@@ -1,15 +1,9 @@
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  AlertTriangle, ArrowRight, HandHeart,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowRight, HandHeart } from "lucide-react";
 import { useAppCreateCovenant } from "@/hooks/use-app-data";
 import { recordEvent } from "@/components/live-stats";
-import {
-  CATEGORY_META, getSelectedSins, getPrimaryApiCategory,
-} from "@/lib/sins-data";
 
-// ─── Covenant Seal ────────────────────────────────────────────────────────────
 function CovenantSeal() {
   return (
     <motion.div
@@ -41,18 +35,12 @@ function CovenantSeal() {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Covenant() {
   const [, setLocation] = useLocation();
   const createCovenant = useAppCreateCovenant();
 
-  const selectedSins = getSelectedSins();
-  const hasKaffarah = selectedSins.some((s) => s.kaffarahId);
-  const hasSins = selectedSins.length > 0;
-
   const handleSign = () => {
-    const primaryCategory = getPrimaryApiCategory(selectedSins);
-    createCovenant.mutate({ sinCategory: primaryCategory }, {
+    createCovenant.mutate({ sinCategory: "other" }, {
       onSuccess: () => {
         recordEvent("covenant");
         setLocation("/day-one");
@@ -73,7 +61,6 @@ export default function Covenant() {
         transition={{ duration: 0.28, ease: "easeInOut" }}
         className="flex-1 flex flex-col"
       >
-        {/* ── Custom Header ── */}
         <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/40">
           <div className="flex items-center h-14 px-2 relative">
             <button
@@ -93,62 +80,8 @@ export default function Covenant() {
         </div>
 
         <div className="flex-1 px-4 pb-40 pt-4 overflow-y-auto flex flex-col gap-4">
-
-          {/* ── Seal ── */}
           <CovenantSeal />
 
-          {/* ── Selected sins summary (only if sins chosen) ── */}
-          {hasSins && (
-            <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/30">
-                <p className="text-xs font-bold text-muted-foreground">ذنوبك المختارة</p>
-                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{selectedSins.length} ذنب</span>
-              </div>
-              <div className="p-3 flex flex-col gap-2">
-                {selectedSins.map((sin) => {
-                  const meta = CATEGORY_META[sin.category];
-                  return (
-                    <div key={sin.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${meta.bg} ${meta.borderColor}`}>
-                      <span className="text-xl leading-none shrink-0">{sin.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] font-bold leading-tight ${meta.color}`}>{sin.name}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{meta.label}</p>
-                      </div>
-                      {sin.kaffarahId && (
-                        <div className="shrink-0 flex items-center gap-1 bg-red-500/10 border border-red-400/20 rounded-lg px-1.5 py-0.5">
-                          <AlertTriangle size={9} className="text-red-500" />
-                          <span className="text-[9px] font-bold text-red-500">كفارة</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ── Kaffarah warning ── */}
-          <AnimatePresence>
-            {hasKaffarah && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="flex items-start gap-3 bg-red-500/8 border border-red-400/25 rounded-2xl px-4 py-3.5"
-              >
-                <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <AlertTriangle size={15} className="text-red-500" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-bold text-red-600 dark:text-red-400 mb-1">تنبيه: بعض ذنوبك تستلزم كفارة</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    ستجد خطة الكفارة الشرعية جاهزة في صفحة الكفارات بعد التوقيع مباشرة.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── Covenant text ── */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -156,7 +89,6 @@ export default function Covenant() {
             className="rounded-2xl overflow-hidden border border-emerald-400/30 shadow-md"
             style={{ background: "linear-gradient(160deg, rgba(5,150,105,0.08) 0%, rgba(4,120,87,0.04) 100%)" }}
           >
-            {/* Top ornament */}
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-emerald-400/20">
               <div className="h-px flex-1 bg-gradient-to-l from-emerald-400/40 to-transparent" />
               <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 tracking-widest">نص الميثاق</span>
@@ -177,7 +109,6 @@ export default function Covenant() {
             </div>
           </motion.div>
 
-          {/* ── Quran ayah ── */}
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -190,10 +121,8 @@ export default function Covenant() {
             </p>
             <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-2 tracking-wide">سورة الزمر — الآية ٥٣</p>
           </motion.div>
-
         </div>
 
-        {/* ── Sign button (floating above nav) ── */}
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

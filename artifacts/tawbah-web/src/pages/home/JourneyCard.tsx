@@ -1,9 +1,9 @@
 import { Link } from "wouter";
-import { ArrowLeft, TrendingUp } from "lucide-react";
+import { ArrowLeft, TrendingUp, BookHeart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAppUserProgress } from "@/hooks/use-app-data";
+import { useAppUserProgress, useUserJourney } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
 import { isNativeApp } from "@/lib/api-base";
 import { useAuth } from "@/context/AuthContext";
@@ -248,12 +248,29 @@ export function Journey30HeroCard() {
 
 export function SectionJourneyCard() {
   const { data: progress } = useAppUserProgress();
+  const { data: journey } = useUserJourney();
   const hasCovenant = progress?.covenantSigned;
   const dayOneDone = progress?.firstDayTasksCompleted;
+  const hasSin = journey?.hasSin ?? true;
 
-  if (hasCovenant && dayOneDone) return <Journey30HeroCard />;
+  if (hasCovenant && dayOneDone) {
+    return (
+      <div className="flex flex-col gap-3">
+        <Journey30HeroCard />
+        {!hasSin && (
+          <Link
+            href="/sins?from=journey"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-bold border border-primary/30 bg-primary/8 text-primary active:scale-[0.98] transition-all"
+          >
+            <BookHeart size={16} />
+            <span>أضف ذنبك لتخصيص الرحلة</span>
+          </Link>
+        )}
+      </div>
+    );
+  }
 
-  const ctaHref = !hasCovenant ? "/covenant" : "/day-one";
+  const ctaHref = !hasCovenant ? "/sins" : "/day-one";
   const ctaLabel = !hasCovenant ? "ابدأ رحلتك الآن" : "أكمل اللحظة الأولى";
 
   const [joinCount, setJoinCount] = useState(

@@ -1,0 +1,111 @@
+You are continuing an in-progress implementation. DO NOT re-explore the codebase. DO NOT re-read files. DO NOT restate what already exists.
+
+The previous work has already:
+- Explored the entire codebase
+- Identified architecture
+- Started implementing auth, middleware, routes, and frontend updates
+- Began modifying:
+  - auth النظام
+  - journey endpoints
+  - sins page
+  - covenant page
+  - account page
+  - removal of localStorage usage
+  - UI adjustments
+
+YOU MUST CONTINUE FROM THIS POINT ONLY.
+
+---------------------------------------
+
+CURRENT STATE (IMPORTANT CONTEXT):
+- /sins is being updated (Skip button + logic)
+- /covenant is being rewritten to be pledge-only
+- account page is being updated (username + logout + settings order)
+- localStorage removal is partially done
+- backend routes are partially updated (auth + journey + tawbah)
+
+---------------------------------------
+
+YOUR TASK NOW (FINISH REMAINING WORK ONLY):
+
+1) COMPLETE /sins PAGE
+- Ensure:
+  - "Skip" button works:
+    → Creates journey WITHOUT sin
+    → Redirects to /covenant
+  - Selecting a sin:
+    → Saves sin to backend
+    → Redirects to /covenant
+- REMOVE any localStorage usage بالكامل
+- Ensure clean API integration only
+
+---------------------------------------
+
+2) FINALIZE /covenant PAGE
+- MUST be pledge-only
+- REMOVE:
+  - any sin selection
+  - any sin display
+  - any dependency on localStorage
+- Only confirm journey start / pledge
+
+---------------------------------------
+
+3) COMPLETE "ADD SIN LATER"
+- If journey exists WITHOUT sin:
+  - Show "Select Sin" button in:
+    - /journey page
+    - account page
+- Button:
+  → navigate to /sins
+  → attach sin to existing journey (NOT create new one)
+
+---------------------------------------
+
+4) FIX JOURNEY STATE IN HOME
+- Ensure home page:
+  - Fetches from GET /user/journey
+  - NO cached or static state
+- Behavior:
+  IF no journey:
+    show start card → /sins
+  IF journey exists:
+    show progress card → /journey
+
+---------------------------------------
+
+5) COMPLETE STORAGE CLEANUP (CRITICAL)
+- Ensure ZERO usage of:
+  - localStorage
+  - sessionStorage
+  - IndexedDB
+- Remove ANY remaining usage (including hidden components like sheets/modals)
+
+---------------------------------------
+
+6) VERIFY AUTH FLOW
+- Ensure:
+  - login via username only
+  - email required in register
+  - cookie-based auth working
+- Ensure:
+  - logout clears everything
+  - protected routes enforced
+
+---------------------------------------
+
+7) DO NOT:
+- Re-read files
+- Re-explain codebase
+- Restart implementation
+- Add new architecture
+
+ONLY COMPLETE missing parts.
+
+---------------------------------------
+
+OUTPUT FORMAT:
+- Apply changes directly
+- No long explanations
+- No repetition
+- Only final implementation steps

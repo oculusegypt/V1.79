@@ -156,6 +156,31 @@ export function useAppCompleteHabit() {
   });
 }
 
+export interface UserJourney {
+  active: boolean;
+  progress: number;
+  totalDays: number;
+  hasSin: boolean;
+  day?: number;
+}
+
+export function useUserJourney() {
+  return useQuery<UserJourney | null>({
+    queryKey: ["/api/user/journey"],
+    queryFn: async () => {
+      try {
+        const res = await fetchWithTimeout("/api/user/journey", { credentials: "include" });
+        if (!res.ok) return null;
+        return res.json() as Promise<UserJourney>;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 2,
+    retry: 1,
+  });
+}
+
 export function useAppIncrementDhikr() {
   const queryClient = useQueryClient();
   return useMutation({

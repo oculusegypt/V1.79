@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link, useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import {
-  ArrowLeft, ChevronDown, AlertTriangle, CheckCircle2,
+  ArrowLeft, AlertTriangle, CheckCircle2,
   BookOpen, Scale, Info, Plus, Check, X, Save,
   Mic, MicOff, Send, Sparkles, RotateCcw,
 } from "lucide-react";
 import {
   SINS, CATEGORY_META, SIN_CATEGORY_ORDER,
-  getSelectedSins, saveSelectedSins,
   type Sin, type SinCategory,
 } from "@/lib/sins-data";
+import { useAppUserProgress } from "@/hooks/use-app-data";
 
 type FilterType = "all" | SinCategory;
 
@@ -361,15 +361,18 @@ function SinCard({
 
 export default function SinsList() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const fromJourney = params.get("from") === "journey";
+
+  const { data: progress } = useAppUserProgress();
+  const alreadyHasCovenant = progress?.covenantSigned ?? false;
+
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedSin, setSelectedSin] = useState<Sin | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const existing = getSelectedSins();
-    setSelectedIds(new Set(existing.map(s => s.id)));
-  }, []);
 
   const filtered = filter === "all" ? SINS : SINS.filter(s => s.category === filter);
 
@@ -384,9 +387,9 @@ export default function SinsList() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
     const sins = SINS.filter(s => selectedIds.has(s.id));
-    saveSelectedSins(sins);
-    setSaved(true);
     try {
       await fetch("/api/user/sins", {
         method: "PUT",
@@ -394,12 +397,25 @@ export default function SinsList() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sinIds: sins.map(s => s.id) }),
       });
-    } catch {}
-    setTimeout(() => setLocation("/covenant"), 500);
+      setSaved(true);
+      setTimeout(() => {
+        if (fromJourney || alreadyHasCovenant) {
+          window.history.length > 1 ? window.history.back() : setLocation("/journey");
+        } else {
+          setLocation("/covenant");
+        }
+      }, 500);
+    } catch {
+      setSaving(false);
+    }
   };
 
   const handleSkip = () => {
-    setLocation("/covenant");
+    if (fromJourney || alreadyHasCovenant) {
+      window.history.length > 1 ? window.history.back() : setLocation("/journey");
+    } else {
+      setLocation("/covenant");
+    }
   };
 
   const handleAiDetected = (ids: string[], _explanation: string) => {

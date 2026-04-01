@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useSettings, QURAN_RECITERS, ACCENT_OPTIONS, type AccentColor } from "@/context/SettingsContext";
 import { useNotifications } from "@/context/NotificationsContext";
-import { useAppUserProgress, useAppDhikrCount, useAppHabits } from "@/hooks/use-app-data";
+import { useAppUserProgress, useAppDhikrCount, useAppHabits, useUserJourney } from "@/hooks/use-app-data";
 import { useQuery } from "@tanstack/react-query";
 import { getAuthHeader } from "@/lib/auth-client";
 import { getSessionId } from "@/lib/session";
@@ -125,6 +125,9 @@ export default function Account() {
   const { settings: notifSettings, updateSettings: updateNotifSettings } = useNotifications();
   const { user, logout } = useAuth();
   const { data: progress } = useAppUserProgress();
+  const { data: journeyMeta } = useUserJourney();
+  const hasSin = journeyMeta?.hasSin ?? true;
+  const journeyActive = journeyMeta?.active ?? false;
   const [reciterOpen, setReciterOpen] = useState(false);
   const currentReciter = QURAN_RECITERS.find(r => r.id === quranReciterId) ?? QURAN_RECITERS[0]!;
 
@@ -297,6 +300,9 @@ export default function Account() {
         <LinkRow href="/progress" icon={<BarChart2 size={18} />} label="خريطة التقدم" description="إحصاءاتك الروحية والمسار اليومي" />
         <LinkRow href="/plan" icon={<CheckSquare size={18} />} label="عاداتي اليومية" description="تتبّع عاداتك الروحية ومكتبة العادات" iconBg="bg-emerald-500/10" iconColor="text-emerald-600" />
         <LinkRow href="/journey" icon={<Calendar size={18} />} label="رحلة التوبة ٣٠ يوماً" description="برنامج يومي تدريجي" />
+        {journeyActive && !hasSin && (
+          <LinkRow href="/sins?from=journey" icon={<BookOpen size={18} />} label="أضف ذنبك للرحلة" description="خصّص رحلتك بتحديد ذنبك" iconBg="bg-primary/10" iconColor="text-primary" />
+        )}
         <LinkRow href="/journal" icon={<PenLine size={18} />} label="يوميات التوبة" description="مساحتك السرية الخاصة" iconBg="bg-violet-500/10" iconColor="text-violet-500" />
         <LinkRow href="/danger-times" icon={<Clock size={18} />} label="أوقات الخطر" description="تذكيرات وقائية ذكية" iconBg="bg-orange-500/10" iconColor="text-orange-500" />
         <LinkRow href="/kaffarah" icon={<ScrollText size={18} />} label="الكفارات الشرعية" description="خطوات مفصّلة لكل ذنب" iconBg="bg-destructive/10" iconColor="text-destructive" />

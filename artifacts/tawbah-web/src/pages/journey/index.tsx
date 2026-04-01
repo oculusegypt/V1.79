@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ZakiyPanel } from "@/components/ZakiyPanel";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle2, Star, Trophy, Flame, ChevronRight,
+  CheckCircle2, Star, Trophy, Flame, ChevronRight, BookHeart,
 } from "lucide-react";
 import { Link } from "wouter";
+import { useUserJourney } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
 import { isNativeApp, getApiBase } from "@/lib/api-base";
 import { useAuth } from "@/context/AuthContext";
@@ -36,6 +37,8 @@ export default function Journey30() {
 
   const sessionId = getSessionId();
   const queryClient = useQueryClient();
+  const { data: journeyMeta } = useUserJourney();
+  const hasSin = journeyMeta?.hasSin ?? true;
   const [showRestoreCode, setShowRestoreCode] = useState(false);
   const [localAllDone, setLocalAllDone] = useState(false);
   const [justCompleted, setJustCompleted] = useState<{ day: number; title: string } | null>(null);
@@ -245,6 +248,21 @@ export default function Journey30() {
 
       {/* ── Scrollable content ────────────────────────────────────────────────── */}
       <div ref={scrollContainerRef} className="flex-1 px-4 pt-5 pb-36 overflow-y-auto flex flex-col gap-5">
+
+        {/* ── Select Sin Banner ──────────────────────────────────────────────── */}
+        {!hasSin && (
+          <Link
+            href="/sins?from=journey"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl border border-primary/30 bg-primary/8 active:scale-[0.98] transition-all"
+          >
+            <BookHeart size={20} className="text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-primary">أضف ذنبك لتخصيص الرحلة</p>
+              <p className="text-[11px] text-muted-foreground">تُبنى خطتك على ذنبك المحدد</p>
+            </div>
+            <ChevronRight size={16} className="text-primary/60 shrink-0" />
+          </Link>
+        )}
 
         {/* ── Day completion celebration banner ─────────────────────────────── */}
         <AnimatePresence>
