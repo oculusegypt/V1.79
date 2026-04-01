@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
 import { eq, or } from "drizzle-orm";
 import {
-  hashPassword, verifyPassword, signJwt, requireAuth,
+  hashPassword, verifyPassword, signJwt, requireAuth, optionalAuth,
   setAuthCookie, clearAuthCookie, type AuthenticatedRequest,
 } from "../lib/auth";
 
@@ -94,13 +94,14 @@ router.post("/auth/logout", (req, res) => {
   return res.json({ ok: true });
 });
 
-router.get("/auth/me", requireAuth, async (req: AuthenticatedRequest, res) => {
-  const userId = Number(req.auth!.sub);
+router.get("/auth/me", optionalAuth, async (req: AuthenticatedRequest, res) => {
+  if (!req.auth?.sub) return res.json({ user: null });
+  const userId = Number(req.auth.sub);
   const [user] = await db
     .select({ id: usersTable.id, username: usersTable.username, email: usersTable.email })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
-  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  if (!user) return res.json({ user: null });
   return res.json({ user });
 });
 

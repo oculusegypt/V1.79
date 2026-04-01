@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) { setUser(null); return; }
         const data = await res.json();
         const u = data.user;
+        if (!u) { setUser(null); return; }
         setUser({ id: String(u.id), username: u.username ?? null, email: u.email ?? "" });
         setSessionUserId(String(u.id));
       })
