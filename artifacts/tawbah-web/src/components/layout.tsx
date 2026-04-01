@@ -86,7 +86,7 @@ function ZakiyNavOrb({ isActive }: { isActive: boolean }) {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { t, lang } = useSettings();
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -179,6 +179,27 @@ export function Layout({ children }: { children: ReactNode }) {
         </AnimatePresence>
       </main>
 
+      {/* Scroll-to-top button */}
+      <AnimatePresence>
+        {!isSos && showScrollTop && (
+          <motion.button
+            key="scroll-top"
+            initial={{ opacity: 0, scale: 0.7, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.7, y: 10 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            whileTap={{ scale: 0.88 }}
+            onClick={scrollToTop}
+            className="fixed z-50 p-3 rounded-full bg-card border border-border shadow-lg shadow-black/10 hover:border-primary/40 hover:text-primary text-muted-foreground transition-colors"
+            style={{ bottom: "96px", right: "16px" }}
+            aria-label="الصعود للأعلى"
+            title="الصعود للأعلى"
+          >
+            <ChevronUp size={20} strokeWidth={2.2} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {!isSos && !isZakiy && (
         <>
           {/* Help button — moved to LEFT side, raised higher to clear chat controls */}
@@ -266,27 +287,6 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
           </AnimatePresence>
 
-          {/* Scroll-to-top button */}
-          <AnimatePresence>
-            {showScrollTop && (
-              <motion.button
-                key="scroll-top"
-                initial={{ opacity: 0, scale: 0.7, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.7, y: 10 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                whileTap={{ scale: 0.88 }}
-                onClick={scrollToTop}
-                className="fixed z-50 p-3 rounded-full bg-card border border-border shadow-lg shadow-black/10 hover:border-primary/40 hover:text-primary text-muted-foreground transition-colors"
-                style={{ bottom: "96px", right: "16px" }}
-                aria-label="الصعود للأعلى"
-                title="الصعود للأعلى"
-              >
-                <ChevronUp size={20} strokeWidth={2.2} />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
           {/* Floating Bottom Navigation Bar */}
           <nav className="fixed bottom-3 inset-x-0 z-40 max-w-md mx-auto px-4">
             <div className="relative">
@@ -317,6 +317,11 @@ export function Layout({ children }: { children: ReactNode }) {
                     style={{ width: "22%" }}
                     onClick={(e) => {
                       e.preventDefault();
+                      if (native) {
+                        // Native: avoid VoiceOrbOverlay (SpeechRecognition) which can cause WebView resize/flicker.
+                        navigate(zakiHref);
+                        return;
+                      }
                       setVoiceOpen(true);
                     }}
                     aria-label="زكي"

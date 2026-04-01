@@ -1,0 +1,30 @@
+/* =============================================
+   CARD COMPONENTS — Tawbah Design System
+   Use .ds-card (prefix avoids shadcn conflict)
+   ============================================= */
+
+.ds-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, background-color 0.3s ease;
+}
+
+.ds-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.ds-card-compact {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.ds-card-elevated {
+  box-shadow: var(--shadow-lg);
+}
+
+.ds-card-surface {
+  background-color: var(--surface);
+}

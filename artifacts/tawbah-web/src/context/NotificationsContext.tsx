@@ -249,13 +249,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   // Re-schedule server-side push when tab becomes visible (refresh subscription)
   useEffect(() => {
     if (!supported) return;
+    // On native Android, opening the notification shade can toggle page visibility.
+    // Rescheduling on visibility change can cancel + recreate LocalNotifications, causing them to disappear
+    // (and any currently playing in-app sounds to stop). Keep this behavior web-only.
+    if (native) return;
     const handleVisibility = () => {
       if (document.visibilityState === "visible") reschedule();
     };
     document.addEventListener("visibilitychange", handleVisibility);
+<<<<<<< Updated upstream
     return () =>
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [supported, reschedule]);
+=======
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [supported, native, reschedule]);
+>>>>>>> Stashed changes
 
   // ── Listen for SW-fired notifications (push) → add to in-app inbox ───────────
   useEffect(() => {
@@ -316,7 +325,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [supported]);
 
   // ── In-app polling every 30s — works on ALL pages while app is open ───────────
+  // Note: For native apps, we skip this because LocalNotifications already handles scheduling
   useEffect(() => {
+    // Skip polling for native apps - LocalNotifications handles everything
+    if (native) return;
+    
     if (!settings.enabled || permission !== "granted" || !supported) return;
 
     // Fire if notification time is within ±2 minutes
@@ -331,6 +344,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           const fireKey = `${n.tag}_${new Date(n.fireAt).toISOString().slice(0, 16)}`;
           if (!hasFiredToday(fireKey)) {
             markFiredToday(fireKey);
+<<<<<<< Updated upstream
             if (native) {
               // Native: use LocalNotifications for real status-bar notification with sound
               let channelId = "reminder";
@@ -389,6 +403,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
               icon: "bell",
               color: "#4A90B8",
             });
+=======
+            // Web: show via Service Worker
+            await showViaSW({ title: n.title, body: n.body, tag: n.tag, url: n.url ?? "/" });
+            void addToInboxApi({ type: "reminder", title: n.title, body: n.body, icon: "bell", color: "#4A90B8" });
+>>>>>>> Stashed changes
           }
         }
       }

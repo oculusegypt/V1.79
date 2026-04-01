@@ -1,0 +1,619 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&family=Tajawal:wght@300;400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --font-sans: 'Tajawal', 'Cairo', sans-serif;
+  --font-display: 'Amiri', serif;
+  --font-quran: 'Amiri Quran', 'Amiri', serif;
+}
+
+/* ── BASE (fallback = forest) ── */
+:root {
+  --background: 45 20% 98%;
+  --foreground: 153 30% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 153 30% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 153 30% 15%;
+  --primary: 153 60% 20%;
+  --primary-foreground: 43 74% 90%;
+  --secondary: 43 60% 50%;
+  --secondary-foreground: 153 60% 15%;
+  --muted: 150 15% 90%;
+  --muted-foreground: 153 15% 45%;
+  --accent: 43 74% 49%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 350 70% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 150 20% 85%;
+  --input: 150 20% 85%;
+  --ring: 153 60% 20%;
+  --radius: 1rem;
+}
+.dark {
+  --background: 153 50% 8%;
+  --foreground: 45 20% 90%;
+  --card: 153 45% 12%;
+  --card-foreground: 45 20% 90%;
+  --popover: 153 45% 12%;
+  --popover-foreground: 45 20% 90%;
+  --primary: 43 74% 49%;
+  --primary-foreground: 153 60% 10%;
+  --secondary: 43 30% 30%;
+  --secondary-foreground: 45 20% 90%;
+  --muted: 153 30% 15%;
+  --muted-foreground: 153 15% 65%;
+  --accent: 43 74% 49%;
+  --accent-foreground: 153 60% 10%;
+  --destructive: 350 60% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 153 30% 20%;
+  --input: 153 30% 20%;
+  --ring: 43 74% 49%;
+}
+
+/* ══════════════════════════════════════
+   1. OCEAN — أزرق عميق + سماوي
+══════════════════════════════════════ */
+[data-accent="ocean"]:root,
+[data-accent="ocean"] {
+  --background: 210 30% 98%;
+  --foreground: 213 50% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 213 50% 15%;
+  --primary: 213 75% 25%;
+  --primary-foreground: 195 80% 92%;
+  --secondary: 195 60% 45%;
+  --secondary-foreground: 213 60% 12%;
+  --muted: 210 20% 90%;
+  --muted-foreground: 213 20% 48%;
+  --accent: 190 75% 38%;
+  --accent-foreground: 0 0% 100%;
+  --border: 210 25% 84%;
+  --input: 210 25% 84%;
+  --ring: 213 75% 25%;
+}
+[data-accent="ocean"].dark {
+  --background: 215 50% 7%;
+  --foreground: 200 25% 90%;
+  --card: 215 45% 11%;
+  --card-foreground: 200 25% 90%;
+  --primary: 195 85% 55%;
+  --primary-foreground: 215 60% 8%;
+  --secondary: 205 40% 28%;
+  --secondary-foreground: 200 25% 90%;
+  --muted: 215 30% 14%;
+  --muted-foreground: 210 20% 62%;
+  --accent: 190 80% 52%;
+  --accent-foreground: 215 60% 8%;
+  --border: 215 30% 18%;
+  --input: 215 30% 18%;
+  --ring: 195 85% 55%;
+}
+
+/* ══════════════════════════════════════
+   2. AURORA — بنفسجي + وردي
+══════════════════════════════════════ */
+[data-accent="aurora"]:root,
+[data-accent="aurora"] {
+  --background: 280 20% 98%;
+  --foreground: 275 40% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 275 40% 15%;
+  --primary: 275 62% 32%;
+  --primary-foreground: 300 80% 95%;
+  --secondary: 330 65% 52%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 275 15% 90%;
+  --muted-foreground: 275 18% 48%;
+  --accent: 330 70% 50%;
+  --accent-foreground: 0 0% 100%;
+  --border: 275 20% 84%;
+  --input: 275 20% 84%;
+  --ring: 275 62% 32%;
+}
+[data-accent="aurora"].dark {
+  --background: 268 48% 7%;
+  --foreground: 290 20% 90%;
+  --card: 268 42% 11%;
+  --card-foreground: 290 20% 90%;
+  --primary: 290 70% 65%;
+  --primary-foreground: 268 55% 8%;
+  --secondary: 330 45% 30%;
+  --secondary-foreground: 290 20% 90%;
+  --muted: 268 28% 15%;
+  --muted-foreground: 275 18% 62%;
+  --accent: 330 72% 62%;
+  --accent-foreground: 268 55% 8%;
+  --border: 268 28% 19%;
+  --input: 268 28% 19%;
+  --ring: 290 70% 65%;
+}
+
+/* ══════════════════════════════════════
+   3. MIDNIGHT — كحلي + أزرق كهربائي
+══════════════════════════════════════ */
+[data-accent="midnight"]:root,
+[data-accent="midnight"] {
+  --background: 230 25% 98%;
+  --foreground: 230 50% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 230 50% 14%;
+  --primary: 232 70% 28%;
+  --primary-foreground: 215 85% 94%;
+  --secondary: 210 80% 48%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 228 18% 90%;
+  --muted-foreground: 230 22% 47%;
+  --accent: 215 88% 52%;
+  --accent-foreground: 0 0% 100%;
+  --border: 228 22% 84%;
+  --input: 228 22% 84%;
+  --ring: 232 70% 28%;
+}
+[data-accent="midnight"].dark {
+  --background: 228 52% 7%;
+  --foreground: 215 22% 90%;
+  --card: 228 46% 11%;
+  --card-foreground: 215 22% 90%;
+  --primary: 215 88% 60%;
+  --primary-foreground: 228 60% 8%;
+  --secondary: 228 38% 27%;
+  --secondary-foreground: 215 22% 90%;
+  --muted: 228 30% 14%;
+  --muted-foreground: 225 20% 62%;
+  --accent: 210 90% 58%;
+  --accent-foreground: 228 60% 8%;
+  --border: 228 30% 18%;
+  --input: 228 30% 18%;
+  --ring: 215 88% 60%;
+}
+
+/* ══════════════════════════════════════
+   4. ROSE — وردي + فوشيا
+══════════════════════════════════════ */
+[data-accent="rose"]:root,
+[data-accent="rose"] {
+  --background: 345 22% 98%;
+  --foreground: 345 40% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 345 40% 14%;
+  --primary: 343 65% 33%;
+  --primary-foreground: 345 80% 95%;
+  --secondary: 322 68% 52%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 345 15% 90%;
+  --muted-foreground: 345 18% 47%;
+  --accent: 330 72% 52%;
+  --accent-foreground: 0 0% 100%;
+  --border: 345 20% 84%;
+  --input: 345 20% 84%;
+  --ring: 343 65% 33%;
+}
+[data-accent="rose"].dark {
+  --background: 342 48% 7%;
+  --foreground: 345 20% 90%;
+  --card: 342 42% 11%;
+  --card-foreground: 345 20% 90%;
+  --primary: 345 75% 65%;
+  --primary-foreground: 342 55% 8%;
+  --secondary: 340 38% 28%;
+  --secondary-foreground: 345 20% 90%;
+  --muted: 342 28% 14%;
+  --muted-foreground: 345 18% 62%;
+  --accent: 330 74% 63%;
+  --accent-foreground: 342 55% 8%;
+  --border: 342 28% 19%;
+  --input: 342 28% 19%;
+  --ring: 345 75% 65%;
+}
+
+/* ══════════════════════════════════════
+   5. SUNSET — برتقالي + عنبر
+══════════════════════════════════════ */
+[data-accent="sunset"]:root,
+[data-accent="sunset"] {
+  --background: 30 25% 98%;
+  --foreground: 25 45% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 25 45% 14%;
+  --primary: 24 80% 33%;
+  --primary-foreground: 35 80% 94%;
+  --secondary: 15 82% 50%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 28 18% 90%;
+  --muted-foreground: 26 22% 47%;
+  --accent: 18 85% 50%;
+  --accent-foreground: 0 0% 100%;
+  --border: 28 22% 84%;
+  --input: 28 22% 84%;
+  --ring: 24 80% 33%;
+}
+[data-accent="sunset"].dark {
+  --background: 22 48% 7%;
+  --foreground: 35 20% 90%;
+  --card: 22 42% 11%;
+  --card-foreground: 35 20% 90%;
+  --primary: 38 88% 58%;
+  --primary-foreground: 22 55% 8%;
+  --secondary: 24 40% 27%;
+  --secondary-foreground: 35 20% 90%;
+  --muted: 22 28% 14%;
+  --muted-foreground: 28 20% 62%;
+  --accent: 30 90% 55%;
+  --accent-foreground: 22 55% 8%;
+  --border: 22 28% 19%;
+  --input: 22 28% 19%;
+  --ring: 38 88% 58%;
+}
+
+/* ══════════════════════════════════════
+   6. SLATE — رمادي-أزرق + سماوي فاتح
+══════════════════════════════════════ */
+[data-accent="slate"]:root,
+[data-accent="slate"] {
+  --background: 215 22% 98%;
+  --foreground: 215 40% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 40% 14%;
+  --primary: 215 48% 27%;
+  --primary-foreground: 208 80% 94%;
+  --secondary: 205 72% 48%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 215 16% 90%;
+  --muted-foreground: 215 18% 47%;
+  --accent: 205 78% 48%;
+  --accent-foreground: 0 0% 100%;
+  --border: 215 20% 84%;
+  --input: 215 20% 84%;
+  --ring: 215 48% 27%;
+}
+[data-accent="slate"].dark {
+  --background: 218 38% 8%;
+  --foreground: 210 18% 90%;
+  --card: 218 33% 12%;
+  --card-foreground: 210 18% 90%;
+  --primary: 208 80% 60%;
+  --primary-foreground: 218 48% 8%;
+  --secondary: 215 30% 26%;
+  --secondary-foreground: 210 18% 90%;
+  --muted: 218 24% 15%;
+  --muted-foreground: 215 16% 62%;
+  --accent: 200 82% 58%;
+  --accent-foreground: 218 48% 8%;
+  --border: 218 26% 19%;
+  --input: 218 26% 19%;
+  --ring: 208 80% 60%;
+}
+
+/* ══════════════════════════════════════
+   7. MINT — نعناعي + فيروزي
+══════════════════════════════════════ */
+[data-accent="mint"]:root,
+[data-accent="mint"] {
+  --background: 168 22% 98%;
+  --foreground: 168 40% 13%;
+  --card: 0 0% 100%;
+  --card-foreground: 168 40% 13%;
+  --primary: 165 62% 23%;
+  --primary-foreground: 168 70% 92%;
+  --secondary: 178 62% 38%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 165 15% 90%;
+  --muted-foreground: 165 18% 47%;
+  --accent: 178 68% 38%;
+  --accent-foreground: 0 0% 100%;
+  --border: 165 20% 84%;
+  --input: 165 20% 84%;
+  --ring: 165 62% 23%;
+}
+[data-accent="mint"].dark {
+  --background: 168 45% 7%;
+  --foreground: 168 18% 90%;
+  --card: 168 40% 11%;
+  --card-foreground: 168 18% 90%;
+  --primary: 172 68% 52%;
+  --primary-foreground: 168 52% 7%;
+  --secondary: 168 32% 25%;
+  --secondary-foreground: 168 18% 90%;
+  --muted: 168 28% 14%;
+  --muted-foreground: 168 16% 62%;
+  --accent: 178 70% 50%;
+  --accent-foreground: 168 52% 7%;
+  --border: 168 28% 18%;
+  --input: 168 28% 18%;
+  --ring: 172 68% 52%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    direction: rtl;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-top: env(safe-area-inset-top, 0px);
+    min-height: 100dvh;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+.glass-effect {
+  @apply bg-white/70 dark:bg-black/50 backdrop-blur-md border border-white/20 dark:border-white/10;
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-l from-primary to-accent dark:from-accent dark:to-white;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-foreground/25 rounded-full; }
+.dark ::-webkit-scrollbar-thumb { @apply bg-primary/30 rounded-full; }
+
+/* Ayah scroll row — horizontal scrollbar */
+.ayah-scroll-row::-webkit-scrollbar { height: 4px; }
+.ayah-scroll-row::-webkit-scrollbar-track { background: transparent; }
+.ayah-scroll-row::-webkit-scrollbar-thumb { @apply bg-foreground/30 rounded-full; }
+.dark .ayah-scroll-row::-webkit-scrollbar-thumb { @apply bg-primary/35 rounded-full; }
+
+/* Quran text */
+.quran-text {
+  font-family: var(--font-quran);
+  font-size: 1.25rem;
+  line-height: 2.2;
+  letter-spacing: 0.01em;
+  direction: rtl;
+  unicode-bidi: bidi-override;
+}
+
+/* ── Quran card waveform ── */
+@keyframes quranWave {
+  from { transform: scaleY(0.25); opacity: 0.4; }
+  to   { transform: scaleY(1);    opacity: 1; }
+}
+.quran-wave-bar {
+  transform-origin: bottom;
+}
+
+/* ── Zaki button animations ── */
+@keyframes zaki-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes zaki-spin-reverse {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+/* Reactive shimmer — subtle hue drift + gentle breathe, no hard pulse */
+@keyframes zaki-glow-reactive {
+  0%   { opacity: 0.22; filter: blur(7px) hue-rotate(0deg);   }
+  25%  { opacity: 0.32; filter: blur(8px) hue-rotate(12deg);  }
+  50%  { opacity: 0.26; filter: blur(7px) hue-rotate(20deg);  }
+  75%  { opacity: 0.34; filter: blur(8px) hue-rotate(8deg);   }
+  100% { opacity: 0.22; filter: blur(7px) hue-rotate(0deg);   }
+}
+
+.zaki-btn-siri {
+  position: relative;
+  border-radius: 9999px;
+  overflow: visible; /* allow ::before glow to extend outside */
+}
+
+/* Outer blurred glow — subtle reactive shimmer */
+.zaki-btn-siri::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    hsl(var(--primary)),
+    hsl(var(--accent) / 0.9),
+    hsl(var(--primary) / 0.7),
+    hsl(var(--accent)),
+    hsl(var(--primary) / 0.8),
+    hsl(var(--accent) / 0.6),
+    hsl(var(--primary))
+  );
+  animation: zaki-spin 9s linear infinite, zaki-glow-reactive 4s ease-in-out infinite;
+  z-index: -1;
+  overflow: visible;
+}
+
+/* ── Animated rainbow border (Gemini-style) ──────────────────────────────── */
+@property --rb-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rb-spin {
+  to { --rb-angle: 360deg; }
+}
+
+/* Circular rainbow border — for the Zakiy nav orb */
+.rainbow-border-orb {
+  --rb-border: 2.5px;
+  position: relative;
+  border-radius: 50%;
+}
+
+.rainbow-border-orb::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--rb-border) * -1);
+  border-radius: 50%;
+  background: conic-gradient(
+    from var(--rb-angle),
+    #06b6d4 0%,
+    #3b82f6 16%,
+    #818cf8 28%,
+    #a855f7 38%,
+    #ec4899 50%,
+    #f97316 62%,
+    #eab308 74%,
+    #22c55e 86%,
+    #06b6d4 100%
+  );
+  animation: rb-spin 5s linear infinite;
+  z-index: 0;
+}
+
+.rainbow-border {
+  --rb-border: 1.5px;
+  --rb-radius: 1rem;
+  position: relative;
+  border-radius: var(--rb-radius);
+}
+
+.rainbow-border::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--rb-border) * -1);
+  border-radius: calc(var(--rb-radius) + var(--rb-border));
+  background: conic-gradient(
+    from var(--rb-angle),
+    #06b6d4 0%,
+    #3b82f6 16%,
+    #818cf8 28%,
+    #a855f7 38%,
+    #ec4899 50%,
+    #f97316 62%,
+    #eab308 74%,
+    #22c55e 86%,
+    #06b6d4 100%
+  );
+  animation: rb-spin 5s linear infinite;
+  z-index: 0;
+}
+
+/* Animated rainbow glow — blurred copy of the border behind the card */
+.rainbow-border::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: calc(var(--rb-radius) + 10px);
+  background: conic-gradient(
+    from var(--rb-angle),
+    #06b6d4 0%,
+    #3b82f6 16%,
+    #818cf8 28%,
+    #a855f7 38%,
+    #ec4899 50%,
+    #f97316 62%,
+    #eab308 74%,
+    #22c55e 86%,
+    #06b6d4 100%
+  );
+  animation: rb-spin 5s linear infinite;
+  filter: blur(18px);
+  opacity: 0.32;
+  z-index: -1;
+}
+
+.rainbow-border-inner {
+  position: relative;
+  z-index: 1;
+  background: hsl(var(--card));
+  border-radius: calc(var(--rb-radius) - var(--rb-border));
+}
+
+/* Inner rotating face — smooth theme gradient */
+.zaki-btn-siri::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 0.5),
+    hsl(var(--accent)),
+    hsl(var(--accent) / 0.6),
+    hsl(var(--primary) / 0.8),
+    hsl(var(--accent) / 0.4),
+    hsl(var(--primary) / 0.6),
+    hsl(var(--accent) / 0.8),
+    hsl(var(--primary))
+  );
+  animation: zaki-spin-reverse 13s linear infinite;
+  z-index: 0;
+}
+
+/* ── Verse card rainbow border (Rajaa page) ───────────────────────────────── */
+.verse-rb-overlay {
+  position: absolute;
+  inset: -1.5px;
+  border-radius: calc(0.75rem + 1.5px);
+  background: conic-gradient(
+    from var(--rb-angle),
+    #06b6d4 0%,
+    #3b82f6 16%,
+    #818cf8 28%,
+    #a855f7 38%,
+    #ec4899 50%,
+    #f97316 62%,
+    #eab308 74%,
+    #22c55e 86%,
+    #06b6d4 100%
+  );
+  animation: rb-spin 5s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.verse-rb-glow {
+  position: absolute;
+  inset: -10px;
+  border-radius: calc(0.75rem + 10px);
+  background: conic-gradient(
+    from var(--rb-angle),
+    #06b6d4 0%,
+    #3b82f6 16%,
+    #818cf8 28%,
+    #a855f7 38%,
+    #ec4899 50%,
+    #f97316 62%,
+    #eab308 74%,
+    #22c55e 86%,
+    #06b6d4 100%
+  );
+  animation: rb-spin 5s linear infinite;
+  filter: blur(16px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.verse-card-inner {
+  position: relative;
+  z-index: 1;
+  background: hsl(var(--card));
+  border-radius: calc(0.75rem - 1.5px);
+  overflow: hidden;
+}

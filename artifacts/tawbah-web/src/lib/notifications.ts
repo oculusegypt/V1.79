@@ -570,8 +570,8 @@ export async function scheduleAll(settings: NotificationSettings): Promise<void>
       try { localStorage.setItem("native_notif_permission", "granted"); } catch {}
     }
     const items: ScheduledItem[] = notifs.map((n, i) => {
-      let channelId = "reminder";
-      let sound = "takbeer";
+      let channelId = "reminder_v2";
+      let sound: string | undefined = undefined;
       if (n.tag.startsWith("prayer-")) { channelId = "prayer"; sound = "azan"; }
       else if (n.tag === "morning-adhkar" || n.tag === "evening-adhkar") { channelId = "adhkar"; sound = n.tag === "morning-adhkar" ? "azkar_sabah" : "azkar_masaa"; }
       return {

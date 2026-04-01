@@ -142,7 +142,7 @@ let _azanActive = false;
 export function preloadAzan(): void {
   try {
     if (!_azanAudio) {
-      _azanAudio = new Audio("/azan.m4a");
+      _azanAudio = new Audio("/azan.mp3");
       _azanAudio.preload = "auto";
       _azanAudio.load();
     }
@@ -154,7 +154,7 @@ export function playAzan(): void {
   _azanActive = true;
   try {
     if (!_azanAudio) {
-      _azanAudio = new Audio("/azan.m4a");
+      _azanAudio = new Audio("/azan.mp3");
       _azanAudio.preload = "auto";
     }
     _azanAudio.currentTime = 0;

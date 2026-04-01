@@ -87,7 +87,14 @@ export async function createNotificationChannels(): Promise<void> {
       name: "التذكيرات اليومية",
       description: "التذكيرات والتنبيهات اليومية",
       importance: 4,
-      sound: "takbeer",
+      vibration: true,
+      lights: true,
+    },
+    {
+      id: "reminder_v2",
+      name: "التذكيرات اليومية",
+      description: "التذكيرات والتنبيهات اليومية",
+      importance: 4,
       vibration: true,
       lights: true,
     },
@@ -129,7 +136,7 @@ let _scheduledIds: number[] = [];
 function getSoundForChannel(channelId?: string): string {
   if (channelId === "prayer") return "azan";
   if (channelId === "adhkar") return "azkar_sabah";
-  return "takbeer";
+  return "";
 }
 
 export async function scheduleLocalNotifications(items: ScheduledItem[]): Promise<void> {
@@ -158,7 +165,7 @@ export async function scheduleLocalNotifications(items: ScheduledItem[]): Promis
   const notifications: LocalNotification[] = future.map(item => {
     const ch = item.channelId ?? "reminder";
     const snd = item.sound ?? getSoundForChannel(ch);
-    return {
+    const base: LocalNotification = {
       id: item.id,
       title: item.title,
       body: item.body,
@@ -168,10 +175,12 @@ export async function scheduleLocalNotifications(items: ScheduledItem[]): Promis
       },
       extra: { url: item.url ?? "/" },
       channelId: ch,
-      sound: snd,
-      smallIcon: "ic_stat_icon_config_sample",
+      smallIcon: "ic_launcher_foreground",
       iconColor: "#2d7a4f",
     };
+    // For reminder channel: do not pass a custom sound so Android uses the device default notification sound.
+    if (ch !== "reminder" && snd) base.sound = snd;
+    return base;
   });
 
   try {
@@ -211,10 +220,11 @@ export async function showLocalNotifNow(params: {
     schedule: { at: fireAt, allowWhileIdle: true },
     extra: { url: params.url ?? "/" },
     channelId: ch,
-    sound: snd,
-    smallIcon: "ic_stat_icon_config_sample",
+    smallIcon: "ic_launcher_foreground",
     iconColor: "#2d7a4f",
   };
+  // For reminder channel: do not pass a custom sound so Android uses the device default notification sound.
+  if (ch !== "reminder" && snd) notification.sound = snd;
 
   try {
     await plugin.schedule({ notifications: [notification] });

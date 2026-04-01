@@ -157,8 +157,13 @@ function StatusBarBridge() {
     import("@capacitor/status-bar").then(({ StatusBar, Style }) => {
       // Capacitor: Style.Dark = dark icons (for light background), Style.Light = light icons (for dark background)
       StatusBar.setStyle({ style: theme === "dark" ? Style.Light : Style.Dark }).catch(() => {});
-      const bgColor = theme === "dark" ? "#0d1117" : "#ffffff";
-      StatusBar.setBackgroundColor({ color: bgColor }).catch(() => {});
+      // Avoid drawing under the status bar (prevents icon contrast issues and layout overlap)
+      StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+
+      // Use the current meta theme-color (already maintained by SettingsContext) as the native status bar color
+      const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+      const color = (meta?.content && meta.content.trim()) ? meta.content.trim() : (theme === "dark" ? "#10551bff" : "#ffffff");
+      StatusBar.setBackgroundColor({ color }).catch(() => {});
     }).catch(() => {});
   }, [theme, ready]);
 

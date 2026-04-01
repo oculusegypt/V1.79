@@ -218,16 +218,31 @@ export default function ZakiyPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/zakiy/message`, {
+      const url = `${API_BASE}/zakiy/message`;
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, history, sessionId, voiceProfile: voiceProfileId }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      handleBotResponse(data.response, data.segments);
-    } catch {
-      addBotMessage("عذراً يا صاحبي، في مشكلة تقنية. جرّب تاني بعد شوية.");
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+      if (!res.ok) {
+        const serverError = (data && typeof data.error === "string" && data.error.trim()) ? data.error : "";
+        throw new Error(serverError || `HTTP_${res.status}`);
+      }
+
+      handleBotResponse(String(data?.response ?? ""), data?.segments);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[Zakiy] sendMessage failed:", { error: msg, apiBase: API_BASE });
+      // Keep the user-facing message friendly, but add a hint when it's clearly connectivity.
+      if (msg === "Failed to fetch" || msg === "NetworkError" || msg.startsWith("HTTP_")) {
+        addBotMessage("عذراً يا صاحبي، في مشكلة تقنية. تأكد من اتصال الإنترنت ورابط السيرفر ثم جرّب تاني.");
+      } else {
+        addBotMessage("عذراً يا صاحبي، في مشكلة تقنية. جرّب تاني بعد شوية.");
+      }
     } finally {
       setLoading(false);
     }
