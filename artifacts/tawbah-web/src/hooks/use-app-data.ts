@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSessionId } from "@/lib/session";
 import { isNativeApp } from "@/lib/api-base";
+import { getAuthHeader } from "@/lib/auth-client";
 import { getMockUserProgress, getMockHabits, getMockDhikrCount } from "@/lib/mock-api";
 import type { 
   UserProgress, 
@@ -169,7 +170,10 @@ export function useUserJourney() {
     queryKey: ["/api/user/journey"],
     queryFn: async () => {
       try {
-        const res = await fetchWithTimeout("/api/user/journey", { credentials: "include" });
+        const res = await fetchWithTimeout("/api/user/journey", {
+          credentials: "include",
+          headers: { ...getAuthHeader() },
+        });
         if (!res.ok) return null;
         return res.json() as Promise<UserJourney>;
       } catch {

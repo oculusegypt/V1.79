@@ -10,7 +10,7 @@ import {
   SINS, CATEGORY_META, SIN_CATEGORY_ORDER,
   type Sin, type SinCategory,
 } from "@/lib/sins-data";
-import { useAppUserProgress } from "@/hooks/use-app-data";
+import { getAuthHeader } from "@/lib/auth-client";
 
 type FilterType = "all" | SinCategory;
 
@@ -363,16 +363,19 @@ export default function SinsList() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
-  const fromJourney = params.get("from") === "journey";
-
-  const { data: progress } = useAppUserProgress();
-  const alreadyHasCovenant = progress?.covenantSigned ?? false;
+  const fromParam = params.get("from"); // "journey" | "account" | null
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedSin, setSelectedSin] = useState<Sin | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const getReturnPath = () => {
+    if (fromParam === "journey") return "/journey";
+    if (fromParam === "account") return "/account";
+    return null; // new journey → go to covenant
+  };
 
   const filtered = filter === "all" ? SINS : SINS.filter(s => s.category === filter);
 
@@ -394,16 +397,13 @@ export default function SinsList() {
       await fetch("/api/user/sins", {
         method: "PUT",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
         body: JSON.stringify({ sinIds: sins.map(s => s.id) }),
       });
       setSaved(true);
       setTimeout(() => {
-        if (fromJourney || alreadyHasCovenant) {
-          window.history.length > 1 ? window.history.back() : setLocation("/journey");
-        } else {
-          setLocation("/covenant");
-        }
+        const returnPath = getReturnPath();
+        setLocation(returnPath ?? "/covenant");
       }, 500);
     } catch {
       setSaving(false);
@@ -411,11 +411,8 @@ export default function SinsList() {
   };
 
   const handleSkip = () => {
-    if (fromJourney || alreadyHasCovenant) {
-      window.history.length > 1 ? window.history.back() : setLocation("/journey");
-    } else {
-      setLocation("/covenant");
-    }
+    const returnPath = getReturnPath();
+    setLocation(returnPath ?? "/covenant");
   };
 
   const handleAiDetected = (ids: string[], _explanation: string) => {
@@ -543,7 +540,7 @@ export default function SinsList() {
               ) : (
                 <>
                   <Save size={18} />
-                  احفظ وتابع إلى الميثاق ({selectedIds.size} {selectedIds.size === 1 ? "ذنب" : "ذنوب"})
+                  {fromParam ? `احفظ وعُد (${selectedIds.size} ${selectedIds.size === 1 ? "ذنب" : "ذنوب"})` : `احفظ وتابع إلى الميثاق (${selectedIds.size} ${selectedIds.size === 1 ? "ذنب" : "ذنوب"})`}
                 </>
               )}
             </button>

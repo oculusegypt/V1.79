@@ -301,7 +301,7 @@ export default function Account() {
         <LinkRow href="/plan" icon={<CheckSquare size={18} />} label="عاداتي اليومية" description="تتبّع عاداتك الروحية ومكتبة العادات" iconBg="bg-emerald-500/10" iconColor="text-emerald-600" />
         <LinkRow href="/journey" icon={<Calendar size={18} />} label="رحلة التوبة ٣٠ يوماً" description="برنامج يومي تدريجي" />
         {journeyActive && !hasSin && (
-          <LinkRow href="/sins?from=journey" icon={<BookOpen size={18} />} label="أضف ذنبك للرحلة" description="خصّص رحلتك بتحديد ذنبك" iconBg="bg-primary/10" iconColor="text-primary" />
+          <LinkRow href="/sins?from=account" icon={<BookOpen size={18} />} label="أضف ذنبك للرحلة" description="خصّص رحلتك بتحديد ذنبك" iconBg="bg-primary/10" iconColor="text-primary" />
         )}
         <LinkRow href="/journal" icon={<PenLine size={18} />} label="يوميات التوبة" description="مساحتك السرية الخاصة" iconBg="bg-violet-500/10" iconColor="text-violet-500" />
         <LinkRow href="/danger-times" icon={<Clock size={18} />} label="أوقات الخطر" description="تذكيرات وقائية ذكية" iconBg="bg-orange-500/10" iconColor="text-orange-500" />

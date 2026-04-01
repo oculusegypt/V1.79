@@ -3,7 +3,7 @@ import { ArrowLeft, TrendingUp, BookHeart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAppUserProgress, useUserJourney } from "@/hooks/use-app-data";
+import { useUserJourney } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
 import { isNativeApp } from "@/lib/api-base";
 import { useAuth } from "@/context/AuthContext";
@@ -247,13 +247,11 @@ export function Journey30HeroCard() {
 // ─── SectionJourneyCard ───────────────────────────────────────────────────────
 
 export function SectionJourneyCard() {
-  const { data: progress } = useAppUserProgress();
   const { data: journey } = useUserJourney();
-  const hasCovenant = progress?.covenantSigned;
-  const dayOneDone = progress?.firstDayTasksCompleted;
+  const journeyActive = journey?.active ?? false;
   const hasSin = journey?.hasSin ?? true;
 
-  if (hasCovenant && dayOneDone) {
+  if (journeyActive) {
     return (
       <div className="flex flex-col gap-3">
         <Journey30HeroCard />
@@ -270,8 +268,8 @@ export function SectionJourneyCard() {
     );
   }
 
-  const ctaHref = !hasCovenant ? "/sins" : "/day-one";
-  const ctaLabel = !hasCovenant ? "ابدأ رحلتك الآن" : "أكمل اللحظة الأولى";
+  const ctaHref = "/sins";
+  const ctaLabel = "ابدأ رحلتك الآن";
 
   const [joinCount, setJoinCount] = useState(
     () => 8400 + Math.floor(Math.random() * 300),
