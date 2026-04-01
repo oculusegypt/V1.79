@@ -165,13 +165,12 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none -z-10" />
 
       <main className="flex-1 flex flex-col relative z-0">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           <motion.div
             key={location}
             initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.22, ease: "easeOut" } }}
+            exit={{ opacity: 0, transition: { duration: 0.06 } }}
             className="flex-1 flex flex-col"
           >
             {children}
