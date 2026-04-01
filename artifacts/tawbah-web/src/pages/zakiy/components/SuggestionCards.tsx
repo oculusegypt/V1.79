@@ -31,7 +31,7 @@ export function SuggestionCards({ suggestions, loading, onSelect }: {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
                 onClick={() => onSelect(q)}
-                className="text-right text-[11.5px] px-3.5 py-2 rounded-full transition-all active:scale-95 leading-snug font-semibold"
+                className="text-right text-[10.5px] px-3 py-1.5 rounded-full transition-all active:scale-95 leading-snug font-semibold"
                 style={isContinueBtn
                   ? { background: "linear-gradient(135deg,#059669,#0d9488)", color: "#fff", boxShadow: "0 2px 8px rgba(5,150,105,0.3)" }
                   : { background: "#fff", color: "#374151", border: "1.5px solid rgba(5,150,105,0.2)", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }

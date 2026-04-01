@@ -1,10 +1,9 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, CircleDot, ShieldAlert, BarChart2, HelpCircle, User2, X, ChevronUp, Sparkles, Bot } from "lucide-react";
+import { Home, Calendar, CircleDot, ShieldAlert, BarChart2, HelpCircle, User2, X, ChevronUp, Bot } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/context/SettingsContext";
-import { VoiceOrbOverlay } from "./VoiceOrbOverlay";
 import { isNativeApp, getApiBase } from "@/lib/api-base";
 
 function ZakiyNavOrb({ isActive }: { isActive: boolean }) {
@@ -86,7 +85,7 @@ function ZakiyNavOrb({ isActive }: { isActive: boolean }) {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const { t, lang } = useSettings();
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -108,7 +107,6 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/account", label: "حسابي", icon: User2 },
   ];
 
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -279,13 +277,6 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
           </AnimatePresence>
 
-          {/* Voice Orb Overlay */}
-          <AnimatePresence>
-            {voiceOpen && (
-              <VoiceOrbOverlay onClose={() => setVoiceOpen(false)} />
-            )}
-          </AnimatePresence>
-
           {/* Floating Bottom Navigation Bar */}
           <nav className="fixed bottom-3 inset-x-0 z-40 max-w-md mx-auto px-4">
             <div className="relative">
@@ -314,15 +305,6 @@ export function Layout({ children }: { children: ReactNode }) {
                     href={zakiHref}
                     className="relative flex flex-col items-center justify-center flex-none h-full tap-highlight-transparent"
                     style={{ width: "22%" }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (native) {
-                        // Native: avoid VoiceOrbOverlay (SpeechRecognition) which can cause WebView resize/flicker.
-                        navigate(zakiHref);
-                        return;
-                      }
-                      setVoiceOpen(true);
-                    }}
                     aria-label="زكي"
                     title="زكي"
                   >

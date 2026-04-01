@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, StopCircle, AlertTriangle, Sparkles, ChevronDown, X } from "lucide-react";
-import { ContextHeader } from "@/components/header/ContextHeader";
+import { Send, Loader2, StopCircle, AlertTriangle, Sparkles, SlidersHorizontal, X, ChevronRight, Mic } from "lucide-react";
+import { useLocation } from "wouter";
 import { getZakiyState } from "@/core/theme";
 import { cn } from "@/lib/utils";
 import { getSessionId } from "@/lib/session";
@@ -16,6 +16,7 @@ import { SuggestionCards } from "./components/SuggestionCards";
 import { StarterCards } from "./components/StarterCards";
 
 export default function ZakiyPage() {
+  const [, navigate] = useLocation();
   const API_BASE = getApiBase();
   const [messages, setMessages] = useState<Message[]>([GREETING]);
   const [input, setInput] = useState("");
@@ -394,20 +395,38 @@ export default function ZakiyPage() {
         )}
       </AnimatePresence>
 
-      <ContextHeader
-        title="الزكي"
-        subtitle="صاحبك الروحاني دايماً معاك"
-        zakiyState={zakiyCurrentState}
-        icon={
-          <span
-            className="text-white font-bold leading-none"
-            style={{ fontFamily: "'Amiri Quran', serif", fontSize: "17px" }}
+      {/* ── WhatsApp-style header ── */}
+      <div
+        className={cn(
+          "sticky top-0 z-30 border-b transition-colors duration-500",
+          "bg-background/95 backdrop-blur-md",
+          zakiyCurrentState === "emergency" ? "border-red-300/50 dark:border-red-700/40 bg-red-50/40 dark:bg-red-950/20" :
+          zakiyCurrentState === "repentance" ? "border-blue-300/50 dark:border-blue-700/40 bg-blue-50/40 dark:bg-blue-950/20" :
+          zakiyCurrentState === "growth" ? "border-emerald-300/50 dark:border-emerald-700/40 bg-emerald-50/40 dark:bg-emerald-950/20" :
+          "border-border/50"
+        )}
+      >
+        <div className="flex items-center h-14 px-2 gap-2 relative" dir="rtl">
+          {/* Back */}
+          <button
+            onClick={() => window.history.length > 1 ? window.history.back() : navigate("/")}
+            className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-muted/70 active:scale-95 transition-all text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="رجوع"
           >
-            ز
-          </span>
-        }
-        right={
-          <div className="flex items-center gap-1.5">
+            <ChevronRight size={22} />
+          </button>
+
+          {/* Avatar + Name */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <ZakiyAvatar />
+            <div className="min-w-0">
+              <h1 className="font-bold text-[15px] text-foreground leading-tight">الزكي</h1>
+              <p className="text-[11px] text-muted-foreground leading-none truncate">صاحبك الروحاني دايماً معاك</p>
+            </div>
+          </div>
+
+          {/* Actions: anniversary + tone icon */}
+          <div className="flex items-center gap-2 shrink-0">
             {anniversaryMilestone && (
               <span className="flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold border border-amber-300/40">
                 <Sparkles size={11} /> {anniversaryMilestone}
@@ -415,20 +434,31 @@ export default function ZakiyPage() {
             )}
             <button
               onClick={() => setVoiceSelectorOpen(true)}
-              className="flex items-center gap-1.5 bg-white/80 dark:bg-stone-800/60 px-2.5 py-1 rounded-full border border-stone-200 dark:border-stone-700/50 hover:border-emerald-300 transition-colors"
-              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-muted-foreground hover:text-primary"
+              aria-label="إعدادات الصوت"
+              title={currentVoiceProfile.name}
             >
-              <span className="text-sm leading-none">{currentVoiceProfile.emoji}</span>
-              <span className="text-[11px] text-stone-600 dark:text-stone-300 font-medium max-w-[60px] truncate">{currentVoiceProfile.name}</span>
-              <ChevronDown size={11} className="text-stone-400 flex-shrink-0" />
+              <SlidersHorizontal size={18} />
             </button>
-            <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">متصل</span>
-            </span>
           </div>
-        }
-      />
+        </div>
+
+        {/* State accent line */}
+        {zakiyCurrentState && (
+          <motion.div
+            key={zakiyCurrentState}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className={cn(
+              "absolute bottom-0 inset-x-0 h-[2px] origin-right",
+              zakiyCurrentState === "emergency" && "bg-red-400/60",
+              zakiyCurrentState === "repentance" && "bg-blue-400/60",
+              zakiyCurrentState === "growth" && "bg-emerald-400/60",
+            )}
+          />
+        )}
+      </div>
 
       <AnimatePresence>
         {riskAlert && !riskDismissed && (
@@ -464,9 +494,7 @@ export default function ZakiyPage() {
 
       <div
         className="flex-1 overflow-y-auto px-4 py-4 space-y-3 chat-scroll-area"
-        style={{
-          background: "var(--chat-bg, hsl(var(--muted)/0.3))",
-        }}
+        style={{ background: "hsl(var(--muted)/0.25)" }}
       >
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
@@ -566,6 +594,36 @@ export default function ZakiyPage() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Floating Mic FAB — shown below suggestions when idle */}
+      <AnimatePresence>
+        {!input.trim() && !recording && !loading && (
+          <motion.button
+            key="float-mic"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            whileTap={{ scale: 0.88 }}
+            onClick={startVoiceInput}
+            className="fixed z-20 w-14 h-14 rounded-full flex items-center justify-center"
+            style={{
+              bottom: "84px",
+              left: "calc(50% - 168px + 12px)",
+              background: "linear-gradient(145deg, #065f46, #059669, #0d9488)",
+              boxShadow: "0 4px 20px rgba(5,150,105,0.45), 0 2px 8px rgba(0,0,0,0.18)",
+            }}
+            aria-label="تحدث مع زكي"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Mic size={24} className="text-white" strokeWidth={1.8} />
+            </motion.div>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       <div
         className="fixed inset-x-0 max-w-md mx-auto z-30"
         style={{ bottom: "8px" }}
@@ -596,33 +654,6 @@ export default function ZakiyPage() {
           </AnimatePresence>
 
           <div className="flex items-end gap-2 px-3 py-2.5">
-            <button
-              onClick={recording ? stopVoiceInput : startVoiceInput}
-              disabled={loading}
-              className={cn(
-                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
-                recording
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-                loading && "opacity-40 cursor-not-allowed"
-              )}
-            >
-              {recording ? <StopCircle size={18} /> : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="2" width="6" height="11" rx="3" />
-                  <path d="M5 10a7 7 0 0 0 14 0" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
-                  <line x1="9" y1="21" x2="15" y2="21" />
-                  <line x1="2" y1="8" x2="4.5" y2="8" strokeWidth="1.4" opacity="0.7" />
-                  <line x1="2" y1="10.5" x2="5" y2="10.5" strokeWidth="1.4" opacity="0.85" />
-                  <line x1="2" y1="13" x2="4.5" y2="13" strokeWidth="1.4" opacity="0.7" />
-                  <line x1="19.5" y1="8" x2="22" y2="8" strokeWidth="1.4" opacity="0.7" />
-                  <line x1="19" y1="10.5" x2="22" y2="10.5" strokeWidth="1.4" opacity="0.85" />
-                  <line x1="19.5" y1="13" x2="22" y2="13" strokeWidth="1.4" opacity="0.7" />
-                </svg>
-              )}
-            </button>
-
             <div className="flex-1">
               <textarea
                 ref={inputRef}
@@ -652,26 +683,54 @@ export default function ZakiyPage() {
               />
             </div>
 
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || loading || recording}
-              className={cn(
-                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
-                input.trim() && !loading && !recording
-                  ? "text-white shadow-md shadow-primary/30"
-                  : "bg-muted text-muted-foreground opacity-60 cursor-not-allowed"
+            {/* Dynamic button: stop when recording, send when typing, mic when idle */}
+            <AnimatePresence mode="wait">
+              {recording ? (
+                <motion.button
+                  key="stop"
+                  initial={{ scale: 0.7, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.7, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={stopVoiceInput}
+                  className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                >
+                  <StopCircle size={18} />
+                </motion.button>
+              ) : input.trim() ? (
+                <motion.button
+                  key="send"
+                  initial={{ scale: 0.7, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.7, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => sendMessage(input)}
+                  disabled={loading}
+                  className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 text-white shadow-md shadow-primary/30"
+                  style={{ background: "linear-gradient(135deg, #2dd4bf, #059669)" }}
+                >
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} className="scale-x-[-1]" />}
+                </motion.button>
+              ) : (
+                <motion.button
+                  key="mic"
+                  initial={{ scale: 0.7, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.7, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={startVoiceInput}
+                  disabled={loading}
+                  className={cn(
+                    "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
+                    "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-primary",
+                    loading && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  <Mic size={18} />
+                </motion.button>
               )}
-              style={input.trim() && !loading && !recording ? {
-                background: "linear-gradient(135deg, var(--primary-soft, #2dd4bf), var(--primary, #059669))",
-              } : undefined}
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} className="scale-x-[-1]" />}
-            </button>
+            </AnimatePresence>
           </div>
-
-          <p className="text-center text-[10px] text-muted-foreground/60 pb-2">
-            ما تقوله هنا آمن ومحفوظ بيننا فقط
-          </p>
         </div>
       </div>
     </div>
