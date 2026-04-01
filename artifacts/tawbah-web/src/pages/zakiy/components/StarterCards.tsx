@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { STARTER_QUESTIONS, STARTER_ICONS } from "../constants";
+import { pickStarterQuestions } from "../constants";
 
 export function StarterCards({ onSelect }: { onSelect: (q: string) => void }) {
+  const [questions] = useState(() => pickStarterQuestions(6));
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -15,7 +18,7 @@ export function StarterCards({ onSelect }: { onSelect: (q: string) => void }) {
         <div className="h-px flex-1" style={{ background: "linear-gradient(90deg,rgba(5,150,105,0.25),transparent)" }} />
       </div>
       <div className="grid grid-cols-2 gap-2.5">
-        {STARTER_QUESTIONS.map((q, i) => (
+        {questions.map(({ q, icon }, i) => (
           <motion.button
             key={i}
             initial={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -34,7 +37,7 @@ export function StarterCards({ onSelect }: { onSelect: (q: string) => void }) {
               style={{ background: `linear-gradient(90deg,${["#059669","#0d9488","#10b981","#065f46","#0891b2","#047857"][i % 6]},transparent)` }}
             />
             <div className="px-3.5 pt-2.5 pb-3">
-              <span className="text-lg block mb-1">{STARTER_ICONS[i % STARTER_ICONS.length]}</span>
+              <span className="text-lg block mb-1">{icon}</span>
               <span className="text-[12px] font-semibold text-stone-700 leading-snug block">{q}</span>
             </div>
           </motion.button>

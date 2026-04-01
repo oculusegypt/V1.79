@@ -54,16 +54,44 @@ export const VOICE_PROFILES = [
 export const VOICE_PROFILE_STORAGE_KEY = "zakiy_voice_profile";
 export const DEFAULT_VOICE_PROFILE_ID = "wise-friend";
 
-export const STARTER_QUESTIONS = [
-  "إزاي أتوب توبة صادقة؟",
-  "أنا بعيد عن ربنا، من فين أبدأ؟",
-  "عملت ذنب كبير، ربنا هيسامحني؟",
-  "إزاي أثبت على الطاعة؟",
-  "أنا بحس بوحشة روحية، أعمل إيه؟",
-  "الاستغفار بيتقبل منين؟",
+export const ALL_STARTER_QUESTIONS: Array<{ q: string; icon: string }> = [
+  { q: "إزاي أتوب توبة صادقة؟", icon: "🌿" },
+  { q: "أنا بعيد عن ربنا، من فين أبدأ؟", icon: "🕌" },
+  { q: "عملت ذنب كبير، ربنا هيسامحني؟", icon: "💚" },
+  { q: "إزاي أثبت على الطاعة؟", icon: "⚡" },
+  { q: "أنا بحس بوحشة روحية، أعمل إيه؟", icon: "🌙" },
+  { q: "الاستغفار بيتقبل منين؟", icon: "🤲" },
+  { q: "كيف أقوي علاقتي بالقرآن؟", icon: "📖" },
+  { q: "أنا مش قادر أصلي بخشوع، أعمل إيه؟", icon: "🙏" },
+  { q: "بيجيلي وسواس كتير، إزاي أتعامل معاه؟", icon: "🧠" },
+  { q: "إزاي أبعد نفسي عن أصحاب السوء؟", icon: "🛡️" },
+  { q: "ما معنى التوكل على الله؟", icon: "🌟" },
+  { q: "الذنوب الصغيرة بتتراكم، إزاي أوقف؟", icon: "🪨" },
+  { q: "عايز أغير حياتي، من فين أبدأ؟", icon: "🌅" },
+  { q: "إزاي أحبب قلبي في الصلاة؟", icon: "💙" },
+  { q: "ربنا بيسمع دعاي وأنا مذنب؟", icon: "🤍" },
+  { q: "إزاي أتغلب على الغضب؟", icon: "🔥" },
+  { q: "محتاج أمل، إيه اللي يعينني؟", icon: "✨" },
+  { q: "الوقت بيروح مني، إزاي أستثمره؟", icon: "⏳" },
+  { q: "بخاف من الموت، إزاي أتعامل مع هذا الخوف؟", icon: "🌙" },
+  { q: "إزاي أشكر ربنا على نعمه؟", icon: "🌺" },
+  { q: "أنا زهقت من الحياة، إيه رأيك؟", icon: "💭" },
+  { q: "إزاي أكون قريب من ربنا في وسط الزحمة؟", icon: "🕊️" },
+  { q: "كيف أعرف إن توبتي اتقبلت؟", icon: "🌿" },
+  { q: "إزاي أتعامل مع ناس بتأذيني وأسامحهم؟", icon: "❤️" },
+  { q: "المعصية بتتكرر مني، خايف أيأس!", icon: "😔" },
+  { q: "إزاي أعمل حسنات كتير في وقت قليل؟", icon: "⚡" },
+  { q: "دعائي ما بيتستجابش، ليه؟", icon: "🤲" },
+  { q: "إزاي أواجه ضغوط الحياة بإيمان؟", icon: "💪" },
 ];
 
-export const STARTER_ICONS = ["🌿", "🕌", "💚", "⚡", "🌙", "🤲"];
+export function pickStarterQuestions(count = 6): Array<{ q: string; icon: string }> {
+  const shuffled = [...ALL_STARTER_QUESTIONS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+export const STARTER_QUESTIONS = ALL_STARTER_QUESTIONS.slice(0, 6).map((x) => x.q);
+export const STARTER_ICONS = ALL_STARTER_QUESTIONS.slice(0, 6).map((x) => x.icon);
 
 export const GREETING: Message = {
   id: "greeting",

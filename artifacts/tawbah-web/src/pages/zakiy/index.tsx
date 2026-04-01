@@ -505,8 +505,6 @@ export default function ZakiyPage() {
               transition={{ duration: 0.28, ease: "easeOut" }}
             >
               <div className={cn("flex items-end gap-2.5", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-                {msg.role === "bot" && <ZakiyAvatar />}
-
                 <div
                   className={cn(
                     "max-w-[86%] rounded-2xl px-4 py-3.5",
