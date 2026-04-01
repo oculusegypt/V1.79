@@ -294,13 +294,16 @@ router.post("/user/covenant", async (req, res) => {
   res.json(formatted);
 });
 
-router.get("/user/journey", requireAuth, async (req: AuthenticatedRequest, res) => {
-  const userId = Number(req.auth!.sub);
+router.get("/user/journey", optionalAuth, async (req: AuthenticatedRequest, res) => {
+  if (!req.auth?.sub) {
+    return res.json(null);
+  }
+  const userId = Number(req.auth.sub);
   const [user] = await db
     .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
-  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  if (!user) return res.json(null);
 
   const sessionId = `user_${userId}`;
   const progress = await db.query.userProgressTable.findFirst({

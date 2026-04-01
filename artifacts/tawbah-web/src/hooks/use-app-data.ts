@@ -3,6 +3,7 @@ import { getSessionId } from "@/lib/session";
 import { isNativeApp } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
 import { getMockUserProgress, getMockHabits, getMockDhikrCount } from "@/lib/mock-api";
+import { useAuth } from "@/context/AuthContext";
 import type { 
   UserProgress, 
   HabitEntry, 
@@ -166,6 +167,7 @@ export interface UserJourney {
 }
 
 export function useUserJourney() {
+  const { user } = useAuth();
   return useQuery<UserJourney | null>({
     queryKey: ["/api/user/journey"],
     queryFn: async () => {
@@ -180,6 +182,7 @@ export function useUserJourney() {
         return null;
       }
     },
+    enabled: !!user,
     staleTime: 1000 * 60 * 2,
     retry: 1,
   });
