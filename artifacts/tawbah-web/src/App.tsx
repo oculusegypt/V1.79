@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -180,7 +181,9 @@ export default function App() {
             <QueryClientProvider client={queryClient}>
               <ZakiyModeProvider>
                 <TooltipProvider>
-                  <Router />
+                  <ErrorBoundary>
+                    <Router />
+                  </ErrorBoundary>
                   <DuaPeakModalBridge />
                   <AdhkarModalBridge />
                   <Toaster />
