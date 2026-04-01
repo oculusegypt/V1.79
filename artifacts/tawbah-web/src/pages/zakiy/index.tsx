@@ -504,7 +504,7 @@ export default function ZakiyPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
             >
-              <div className={cn("flex items-end gap-2.5", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
+              <div className={cn("flex items-end", msg.role === "user" ? "flex-row-reverse gap-2.5" : "flex-row")}>
                 <div
                   className={cn(
                     "max-w-[86%] rounded-2xl px-4 py-3.5",
@@ -588,39 +588,9 @@ export default function ZakiyPage() {
           </motion.div>
         )}
 
-        <div style={{ height: "100px" }} />
+        <div style={{ height: "64px" }} />
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Floating Mic FAB — shown below suggestions when idle */}
-      <AnimatePresence>
-        {!input.trim() && !recording && !loading && (
-          <motion.button
-            key="float-mic"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            whileTap={{ scale: 0.88 }}
-            onClick={startVoiceInput}
-            className="fixed z-20 w-14 h-14 rounded-full flex items-center justify-center"
-            style={{
-              bottom: "84px",
-              left: "calc(50% - 168px + 12px)",
-              background: "linear-gradient(145deg, #065f46, #059669, #0d9488)",
-              boxShadow: "0 4px 20px rgba(5,150,105,0.45), 0 2px 8px rgba(0,0,0,0.18)",
-            }}
-            aria-label="تحدث مع زكي"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.08, 1] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Mic size={24} className="text-white" strokeWidth={1.8} />
-            </motion.div>
-          </motion.button>
-        )}
-      </AnimatePresence>
 
       <div
         className="fixed inset-x-0 max-w-md mx-auto z-30"
@@ -691,7 +661,7 @@ export default function ZakiyPage() {
                   exit={{ scale: 0.7, opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   onClick={stopVoiceInput}
-                  className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                  className="flex-shrink-0 self-stretch w-12 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-primary text-primary-foreground shadow-md shadow-primary/30"
                 >
                   <StopCircle size={18} />
                 </motion.button>
@@ -704,7 +674,7 @@ export default function ZakiyPage() {
                   transition={{ duration: 0.15 }}
                   onClick={() => sendMessage(input)}
                   disabled={loading}
-                  className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 text-white shadow-md shadow-primary/30"
+                  className="flex-shrink-0 self-stretch w-12 rounded-xl flex items-center justify-center transition-all active:scale-90 text-white shadow-md shadow-primary/30"
                   style={{ background: "linear-gradient(135deg, #2dd4bf, #059669)" }}
                 >
                   {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} className="scale-x-[-1]" />}
@@ -719,7 +689,7 @@ export default function ZakiyPage() {
                   onClick={startVoiceInput}
                   disabled={loading}
                   className={cn(
-                    "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
+                    "flex-shrink-0 self-stretch w-12 rounded-xl flex items-center justify-center transition-all active:scale-90",
                     "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-primary",
                     loading && "opacity-40 cursor-not-allowed"
                   )}
