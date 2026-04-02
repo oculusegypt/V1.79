@@ -11,9 +11,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { useQuery } from "@tanstack/react-query";
 import { useAppUserProgress, useAppDhikrCount, useAppHabits } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
-import { getApiBase } from "@/lib/api-base";
+import { apiUrl } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
 import { BadgesSection } from "@/components/badges";
+import { useSettings } from "@/context/SettingsContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface DayRecord {
   date: string;
@@ -392,15 +394,16 @@ function Journey30Track({ journey30Days }: { journey30Days: number }) {
 }
 
 function useJourney30Data() {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["/api/journey30-progress"],
+    queryKey: ["/api/journey30-progress", user?.id ?? "guest"],
     queryFn: async () => {
       const sessionId = getSessionId();
-      const res = await fetch(`${getApiBase()}/journey30?sessionId=${encodeURIComponent(sessionId)}`, { headers: { ...getAuthHeader() } });
+      const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
       if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
       return res.json() as Promise<{ completedCount: number; currentDay: number; streakDays: number }>;
     },
-    staleTime: 1000 * 60 * 5,
+    enabled: !!user,
   });
 }
 
@@ -422,6 +425,7 @@ export default function ProgressChart() {
   const { data: dhikr } = useAppDhikrCount();
   const { data: habits } = useAppHabits();
   const { data: journey30 } = useJourney30Data();
+  const { user } = useAuth();
   const [weekData, setWeekData] = useState<DayRecord[]>([]);
   const [activeTab, setActiveTab] = useState<"habits" | "istighfar">("habits");
   const [quote] = useState(() => MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)]);
@@ -429,6 +433,10 @@ export default function ProgressChart() {
   const ameenCount = getDuaPeakAmeenCount();
 
   useEffect(() => {
+    if (!user) {
+      setWeekData([]);
+      return;
+    }
     const sessionId = getSessionId();
     const last7 = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(); d.setDate(d.getDate() - (6 - i));
@@ -438,8 +446,8 @@ export default function ProgressChart() {
       last7.map(async (date) => {
         try {
           const [habRes, dhRes] = await Promise.all([
-            fetch(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${date}`),
-            fetch(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${date}`),
+            fetch(apiUrl(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${date}`)),
+            fetch(apiUrl(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${date}`)),
           ]);
           const habData = habRes.ok ? await habRes.json() : [];
           const dhData = dhRes.ok ? await dhRes.json() : { istighfar: 0 };
@@ -454,7 +462,7 @@ export default function ProgressChart() {
         }
       })
     ).then(setWeekData);
-  }, []);
+  }, [user?.id]);
 
   const todayHabits = habits || [];
   const completedToday = todayHabits.filter((h) => h.completed).length;

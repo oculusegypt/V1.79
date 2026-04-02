@@ -31,7 +31,7 @@ const DAY_EMOJIS: Record<number, string> = {
 };
 
 export default function Journey30() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
   const sessionId = getSessionId();
@@ -71,7 +71,7 @@ export default function Journey30() {
         throw e;
       }
     },
-    enabled: !!sessionId,
+    enabled: !!user && !!sessionId,
     refetchInterval: false,
     retry: false,
   });
@@ -94,11 +94,25 @@ export default function Journey30() {
     },
   });
 
-  useEffect(() => {
-    if (!authLoading && !user) setLocation("/login");
-  }, [authLoading, user, setLocation]);
-
-  if (!authLoading && !user) return null;
+  // Auth check - if not logged in, show nothing (will be redirected by App.tsx or layout)
+  if (!authLoading && !user) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">يرجى تسجيل الدخول أولاً</p>
+          <button
+            onClick={() => {
+              sessionStorage.setItem("pending_redirect", "/journey");
+              setLocation("/login");
+            }}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-bold"
+          >
+            تسجيل الدخول
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

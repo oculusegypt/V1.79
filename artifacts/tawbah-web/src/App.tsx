@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SettingsProvider, useSettings } from "@/context/SettingsContext";
+import { SettingsProvider, useSettings, ACCENT_OPTIONS } from "@/context/SettingsContext";
 import { NotificationsProvider, useNotifications } from "@/context/NotificationsContext";
 import { AppNotificationsProvider } from "@/context/AppNotificationsContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -161,12 +161,15 @@ function StatusBarBridge() {
       // Avoid drawing under the status bar (prevents icon contrast issues and layout overlap)
       StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
 
-      // Use the current meta theme-color (already maintained by SettingsContext) as the native status bar color
-      const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
-      const color = (meta?.content && meta.content.trim()) ? meta.content.trim() : (theme === "dark" ? "#10551bff" : "#ffffff");
-      StatusBar.setBackgroundColor({ color }).catch(() => {});
+      // Get accent color based on theme (light/dark mode)
+      const opt = ACCENT_OPTIONS.find(o => o.id === accentColor);
+      const accentColorValue = theme === "dark" 
+        ? (opt?.darkPrimary ?? "#10551b") 
+        : (opt?.lightPrimary ?? "#174d2b");
+      
+      StatusBar.setBackgroundColor({ color: accentColorValue }).catch(() => {});
     }).catch(() => {});
-  }, [theme, ready]);
+  }, [theme, accentColor, ready]);
 
   return null;
 }
@@ -175,10 +178,10 @@ export default function App() {
   return (
     <SettingsProvider>
       <StatusBarBridge />
-      <AuthProvider>
-        <NotificationsProvider>
-          <AppNotificationsProvider>
-            <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <NotificationsProvider>
+            <AppNotificationsProvider>
               <ZakiyModeProvider>
                 <TooltipProvider>
                   <ErrorBoundary>
@@ -189,10 +192,10 @@ export default function App() {
                   <Toaster />
                 </TooltipProvider>
               </ZakiyModeProvider>
-            </QueryClientProvider>
-          </AppNotificationsProvider>
-        </NotificationsProvider>
-      </AuthProvider>
+            </AppNotificationsProvider>
+          </NotificationsProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </SettingsProvider>
   );
 }

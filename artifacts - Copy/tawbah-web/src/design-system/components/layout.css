@@ -1,0 +1,76 @@
+/* =============================================
+   LAYOUT UTILITIES — Tawbah Design System
+   Use .ds-* prefix to avoid conflicts
+   ============================================= */
+
+.ds-container {
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.ds-container-wide {
+  max-width: 768px;
+}
+
+.ds-flex {
+  display: flex;
+  align-items: center;
+}
+
+.ds-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ds-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ds-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ds-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.ds-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ds-stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Text utilities */
+.ds-text-muted {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.ds-text-primary {
+  color: var(--primary);
+}
+
+.ds-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin-block: var(--space-4);
+}

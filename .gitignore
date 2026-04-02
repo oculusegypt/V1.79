@@ -41,6 +41,13 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Secrets / credentials (do not commit)
+.env
+.env.*
+google-services.json
+GoogleService-Info.plist
+DB---supabase---*.txt
+
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 

@@ -1,0 +1,19 @@
+packages:
+  "framer-motion": "Smooth page transitions and micro-interactions"
+  "uuid": "For generating and managing unique session IDs"
+  "date-fns": "For formatting and manipulating dates"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes without style conflicts"
+  "@radix-ui/react-slot": "For unstyled accessible components"
+
+images:
+  - path: "artifacts/tawbah-web/public/images/hero-bg.png"
+    description: "Warm spiritual Islamic geometric pattern background in deep rich forest green and subtle gold tones, elegant, minimalist, serene"
+    aspect_ratio: "16:9"
+  - path: "artifacts/tawbah-web/public/images/mosque-silhouette.png"
+    description: "Minimalist beautiful silhouette of a mosque dome and minaret in gold against a deep dark green background, serene, calming, spiritual"
+    aspect_ratio: "1:1"
+
+notes:
+  - App is fully in Arabic and requires RTL layout (dir="rtl") globally.
+  - The generated orval API client missed `sessionId` in GET parameters, so we implement custom wrappers in `use-app-data.ts` to ensure `sessionId` is passed properly via query string.

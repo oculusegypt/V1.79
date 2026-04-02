@@ -1,0 +1,94 @@
+/* =============================================
+   COLOR TOKENS — Tawbah Design System
+   ============================================= */
+
+/* ── LIGHT THEME (default) ── */
+:root {
+  --bg:           hsl(45, 20%, 98%);
+  --surface:      hsl(0, 0%, 100%);
+  --card:         hsl(0, 0%, 100%);
+  --text:         hsl(153, 30%, 15%);
+  --text-muted:   hsl(153, 15%, 45%);
+  --primary:      hsl(153, 60%, 20%);
+  --primary-soft: hsl(153, 40%, 90%);
+  --border:       hsl(150, 20%, 85%);
+  --danger:       hsl(350, 70%, 45%);
+  --warning:      hsl(43, 74%, 49%);
+}
+
+/* ── DARK THEME ── */
+[data-theme="dark"] {
+  --bg:           hsl(222, 20%, 8%);
+  --surface:      hsl(222, 18%, 12%);
+  --card:         hsl(222, 16%, 16%);
+  --text:         hsl(210, 20%, 92%);
+  --text-muted:   hsl(210, 15%, 60%);
+  --primary:      hsl(153, 50%, 45%);
+  --primary-soft: hsl(153, 30%, 20%);
+  --border:       hsl(222, 15%, 25%);
+  --danger:       hsl(350, 65%, 55%);
+  --warning:      hsl(43, 70%, 55%);
+}
+
+/* ── ZAKIY STATE: EMERGENCY ── */
+[data-zakiy-state="emergency"] {
+  --bg:           hsl(350, 30%, 97%);
+  --surface:      hsl(350, 20%, 100%);
+  --card:         hsl(350, 15%, 100%);
+  --primary:      hsl(350, 70%, 42%);
+  --primary-soft: hsl(350, 50%, 92%);
+  --border:       hsl(350, 40%, 82%);
+  --text:         hsl(350, 40%, 18%);
+  --text-muted:   hsl(350, 20%, 48%);
+}
+
+[data-theme="dark"][data-zakiy-state="emergency"] {
+  --bg:           hsl(350, 25%, 10%);
+  --surface:      hsl(350, 22%, 14%);
+  --card:         hsl(350, 20%, 18%);
+  --primary:      hsl(350, 65%, 55%);
+  --primary-soft: hsl(350, 40%, 22%);
+  --border:       hsl(350, 30%, 28%);
+}
+
+/* ── ZAKIY STATE: REPENTANCE ── */
+[data-zakiy-state="repentance"] {
+  --bg:           hsl(210, 30%, 97%);
+  --surface:      hsl(210, 20%, 100%);
+  --card:         hsl(210, 15%, 100%);
+  --primary:      hsl(210, 65%, 38%);
+  --primary-soft: hsl(210, 50%, 92%);
+  --border:       hsl(210, 35%, 82%);
+  --text:         hsl(210, 40%, 18%);
+  --text-muted:   hsl(210, 20%, 48%);
+}
+
+[data-theme="dark"][data-zakiy-state="repentance"] {
+  --bg:           hsl(210, 25%, 9%);
+  --surface:      hsl(210, 22%, 13%);
+  --card:         hsl(210, 20%, 17%);
+  --primary:      hsl(210, 60%, 52%);
+  --primary-soft: hsl(210, 35%, 20%);
+  --border:       hsl(210, 28%, 26%);
+}
+
+/* ── ZAKIY STATE: GROWTH ── */
+[data-zakiy-state="growth"] {
+  --bg:           hsl(145, 30%, 97%);
+  --surface:      hsl(145, 20%, 100%);
+  --card:         hsl(145, 15%, 100%);
+  --primary:      hsl(145, 60%, 28%);
+  --primary-soft: hsl(145, 45%, 90%);
+  --border:       hsl(145, 35%, 82%);
+  --text:         hsl(145, 40%, 15%);
+  --text-muted:   hsl(145, 20%, 46%);
+}
+
+[data-theme="dark"][data-zakiy-state="growth"] {
+  --bg:           hsl(145, 22%, 9%);
+  --surface:      hsl(145, 20%, 13%);
+  --card:         hsl(145, 18%, 17%);
+  --primary:      hsl(145, 55%, 42%);
+  --primary-soft: hsl(145, 32%, 20%);
+  --border:       hsl(145, 28%, 24%);
+}

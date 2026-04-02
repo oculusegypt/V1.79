@@ -1,0 +1,38 @@
+/* =============================================
+   INPUT COMPONENTS — Tawbah Design System
+   Use .ds-input (prefix avoids shadcn conflict)
+   ============================================= */
+
+.ds-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.ds-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ds-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.ds-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--border);
+}
+
+textarea.ds-input {
+  resize: vertical;
+  min-height: 80px;
+}

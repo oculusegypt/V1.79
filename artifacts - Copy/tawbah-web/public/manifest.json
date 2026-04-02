@@ -1,0 +1,25 @@
+{
+  "name": "دليل التوبة النصوح",
+  "short_name": "التوبة",
+  "description": "دليل التوبة النصوح - تطبيق إسلامي للتوبة والاستقامة",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "portrait",
+  "background_color": "#faf9f6",
+  "theme_color": "#faf9f6",
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

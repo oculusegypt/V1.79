@@ -1,0 +1,22 @@
+/* =============================================
+   TAWBAH DESIGN SYSTEM — Main Entry Point
+   Import order matters: tokens → base → components
+   ============================================= */
+
+/* 1. Design Tokens */
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/radius.css';
+@import './tokens/shadows.css';
+
+/* 2. Base Styles */
+@import './base/reset.css';
+@import './base/global.css';
+
+/* 3. Components */
+@import './components/button.css';
+@import './components/card.css';
+@import './components/input.css';
+@import './components/layout.css';
+@import './components/zakiy.css';

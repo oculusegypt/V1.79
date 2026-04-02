@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
+import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { CheckSquare, Square, Trash2, ListChecks, Loader2, Bot } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
-import { getSessionId } from "@/lib/session";
 
 interface HadiTaskItem {
   id: number;
@@ -23,24 +25,27 @@ interface HadiTaskGroup {
 }
 
 function useHadiTasks() {
+  const { user } = useAuth();
   const sessionId = getSessionId();
   return useQuery<HadiTaskGroup[]>({
-    queryKey: ["/api/hadi-tasks", sessionId],
+    queryKey: ["/api/hadi-tasks", user?.id ?? "guest"],
     queryFn: async () => {
-      const res = await fetch(`/api/hadi-tasks?sessionId=${encodeURIComponent(sessionId)}`);
+      const res = await fetch(apiUrl(`/api/hadi-tasks?sessionId=${encodeURIComponent(sessionId)}`));
       if (!res.ok) throw new Error("Failed to fetch tasks");
       return res.json();
     },
+    enabled: !!user,
     staleTime: 0,
   });
 }
 
 function useToggleTask() {
+  const { user } = useAuth();
   const sessionId = getSessionId();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const res = await fetch(`/api/hadi-tasks/items/${id}`, {
+      const res = await fetch(apiUrl(`/api/hadi-tasks/items/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, completed }),
@@ -49,9 +54,9 @@ function useToggleTask() {
       return res.json();
     },
     onMutate: async ({ id, completed }) => {
-      await qc.cancelQueries({ queryKey: ["/api/hadi-tasks", sessionId] });
-      const prev = qc.getQueryData<HadiTaskGroup[]>(["/api/hadi-tasks", sessionId]);
-      qc.setQueryData<HadiTaskGroup[]>(["/api/hadi-tasks", sessionId], (old) =>
+      await qc.cancelQueries({ queryKey: ["/api/hadi-tasks", user?.id ?? "guest"] });
+      const prev = qc.getQueryData<HadiTaskGroup[]>(["/api/hadi-tasks", user?.id ?? "guest"]);
+      qc.setQueryData<HadiTaskGroup[]>(["/api/hadi-tasks", user?.id ?? "guest"], (old) =>
         old?.map((g) => ({
           ...g,
           items: g.items.map((item) =>
@@ -62,20 +67,21 @@ function useToggleTask() {
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["/api/hadi-tasks", sessionId], ctx.prev);
+      if (ctx?.prev) qc.setQueryData(["/api/hadi-tasks", user?.id ?? "guest"], ctx.prev);
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ["/api/hadi-tasks", sessionId] });
+      qc.invalidateQueries({ queryKey: ["/api/hadi-tasks", user?.id ?? "guest"] });
     },
   });
 }
 
 function useDeleteGroup() {
+  const { user } = useAuth();
   const sessionId = getSessionId();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (groupId: number) => {
-      const res = await fetch(`/api/hadi-tasks/groups/${groupId}`, {
+      const res = await fetch(apiUrl(`/api/hadi-tasks/groups/${groupId}`), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
@@ -84,7 +90,7 @@ function useDeleteGroup() {
       return res.json();
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/hadi-tasks", sessionId] });
+      qc.invalidateQueries({ queryKey: ["/api/hadi-tasks", user?.id ?? "guest"] });
     },
   });
 }

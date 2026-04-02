@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Share2 } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { getSessionId } from "@/lib/session";
 import { getApiBase } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
-import { getSessionId } from "@/lib/session";
+import { useAuth } from "@/context/AuthContext";
 
 const STAGES = [
   { min: 0,    max: 49,   emoji: "🌱", name: "بذرة",    nameEn: "Seed",     color: "#a7f3d0", bg: "#022c22", desc: "رحلتك بدأت — كل ذكر يُحيي قلبك",         size: 80  },
@@ -52,7 +53,7 @@ function TreeVisual({ emoji, size, color }: { emoji: string; size: number; color
 interface Journey30Summary { completedCount: number; streakDays: number; }
 
 export default function Garden() {
-  const sessionId = getSessionId();
+  const { user } = useAuth();
 
   const [dhikrCount, setDhikrCount] = useState(() => {
     try { return parseInt(localStorage.getItem("home_dhikr_count") ?? "0") || 0; } catch { return 0; }
@@ -64,14 +65,13 @@ export default function Garden() {
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const { data: j30 } = useQuery<Journey30Summary>({
-    queryKey: ["journey30-garden", sessionId],
+    queryKey: ["journey30-garden", user?.id ?? "guest"],
     queryFn: async () => {
       const res = await fetch(`${getApiBase()}/journey30`, { headers: { ...getAuthHeader() } });
       const data = await res.json();
-      return { completedCount: data.completedCount ?? 0, streakDays: data.streakDays ?? 0 };
+      return data as Journey30Summary;
     },
-    enabled: !!sessionId,
-    staleTime: 60 * 1000,
+    enabled: !!user,
   });
 
   const journeyDays = j30?.completedCount ?? 0;
