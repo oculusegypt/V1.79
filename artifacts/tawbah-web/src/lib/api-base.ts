@@ -33,4 +33,13 @@ export function getApiBase(): string {
   return "/api";
 }
 
+export function apiUrl(path: string): string {
+  const base = getApiBase();
+  if (!path) return base;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (base.endsWith("/") && path.startsWith("/")) return base + path.slice(1);
+  if (!base.endsWith("/") && !path.startsWith("/")) return `${base}/${path}`;
+  return base + path;
+}
+
 export const API_BASE = getApiBase();
