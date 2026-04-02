@@ -27,6 +27,7 @@ export const userProgressTable = pgTable("user_progress", {
   day40Progress: integer("day40_progress").notNull().default(0),
   firstDayTasksCompleted: boolean("first_day_tasks_completed").notNull().default(false),
   streakDays: integer("streak_days").notNull().default(0),
+  relapseCount: integer("relapse_count").notNull().default(0),
   lastActiveDate: date("last_active_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });

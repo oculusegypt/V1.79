@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { journey30Table, journey30TasksTable } from "@workspace/db/schema";
+import { journey30Table, journey30TasksTable, userProgressTable } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import { optionalAuth, type AuthenticatedRequest } from "../lib/auth";
 
@@ -198,6 +198,30 @@ router.post("/journey30/complete", optionalAuth, async (req, res) => {
   }).returning();
 
   return res.json({ success: true, day: created });
+});
+
+router.post("/journey30/relapse", optionalAuth, async (req, res) => {
+  const aReq = req as AuthenticatedRequest;
+  const userId = getUserId(aReq);
+  if (!userId) return res.status(400).json({ error: "sessionId or auth token required" });
+
+  await Promise.all([
+    db.delete(journey30Table).where(eq(journey30Table.userId, userId)),
+    db.delete(journey30TasksTable).where(eq(journey30TasksTable.userId, userId)),
+  ]);
+
+  const existingProgress = await db.query.userProgressTable.findFirst({
+    where: eq(userProgressTable.sessionId, userId),
+  });
+
+  if (existingProgress) {
+    await db
+      .update(userProgressTable)
+      .set({ relapseCount: (existingProgress.relapseCount ?? 0) + 1 })
+      .where(eq(userProgressTable.sessionId, userId));
+  }
+
+  return res.json({ success: true });
 });
 
 export default router;

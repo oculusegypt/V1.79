@@ -1,9 +1,37 @@
-import { Link } from "wouter";
+import { useState } from "react";
 import { RefreshCcw } from "lucide-react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/PageHeader";
+import { useLocation } from "wouter";
+import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
+import { getAuthHeader } from "@/lib/auth-client";
 
 export default function Relapse() {
+  const [, setLocation] = useLocation();
+  const [loading, setLoading] = useState(false);
+
+  const handleRestartJourney = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const sessionId = getSessionId();
+      await fetch(apiUrl(`/api/journey30/relapse?sessionId=${encodeURIComponent(sessionId || "")}`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+    } catch {
+      // noop
+    } finally {
+      setLoading(false);
+      setLocation("/covenant");
+    }
+  };
+
   return (
     <>
       <PageHeader title="ضعفت وعدت؟" subtitle="لا تيأس — التوبة باب مفتوح" icon={<RefreshCcw size={16} />} />
@@ -43,13 +71,15 @@ export default function Relapse() {
         </div>
 
         <div className="mt-10">
-          <Link 
-            href="/covenant"
-            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2"
+          <button
+            type="button"
+            onClick={handleRestartJourney}
+            disabled={loading}
+            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <RefreshCcw size={18} />
-            <span>تجديد العهد والبدء من جديد</span>
-          </Link>
+            <span>{loading ? "جاري إعادة تفعيل الرحلة..." : "تجديد العهد والبدء من جديد"}</span>
+          </button>
         </div>
       </motion.div>
       </div>
