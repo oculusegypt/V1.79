@@ -2,8 +2,7 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio3\jbr"
 $env:PATH = "$env:JAVA_HOME\bin;" + $env:PATH
 java -version
 Write-Host "---"
-$webDir = "C:\Users\sd\Documents\GitHub\v177\artifacts\tawbah-web"
-
+$webDir = "C:\xampp\htdocs\v177\artifacts\tawbah-web"
 Write-Host "Building web assets..."
 Push-Location $webDir
 pnpm -s build
@@ -22,5 +21,6 @@ Pop-Location
 
 Write-Host "---"
 Push-Location "$webDir\android"
-.\gradlew.bat assembleDebug
+# Use --no-daemon to ensure the Gradle daemon does not run in the background
+.\gradlew.bat --no-daemon assembleDebug
 Pop-Location

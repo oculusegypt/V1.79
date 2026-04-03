@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { setSessionUserId } from "@/lib/session";
+import { useLocation } from "wouter";
+import { clearGuestSessionId, setSessionUserId } from "@/lib/session";
 import { apiUrl } from "@/lib/api-base";
 
 type AuthUser = { id: string; username: string | null; email: string; gender?: "male" | "female" };
@@ -22,7 +22,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return stored ? JSON.parse(stored) : null;
   });
   const [isLoading, setIsLoading] = useState(true);
-  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setSessionUserId(user?.id ?? null);
+  }, [user]);
 
   useEffect(() => {
     // Verify session with server but DON'T clear user if it fails
@@ -63,8 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await res.json();
     const u = data.user;
-
-    queryClient.clear();
     const newUser = { id: String(u.id), username: u.username ?? null, email: u.email ?? "", gender: u.gender };
     setUser(newUser);
     setSessionUserId(String(u.id));
@@ -87,9 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await res.json();
     const u = data.user;
-
-    queryClient.clear();
-    const newUser = { id: String(u.id), username: u.username ?? null, email: u.email ?? "", gender: u.gender };
+    const newUser = { id: String(u.id), username: u.username ?? null, email: u.email ?? "" };
     setUser(newUser);
     setSessionUserId(String(u.id));
     localStorage.setItem("tawbah_user", JSON.stringify(newUser));
@@ -103,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" }).catch(() => {});
     setUser(null);
     setSessionUserId(null);
+    clearGuestSessionId();
     localStorage.removeItem("tawbah_user");
     localStorage.removeItem("tawbah_gender");
     localStorage.removeItem("home_dhikr_count");
@@ -110,7 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("journey30_restore");
     localStorage.removeItem("sessionId");
     localStorage.removeItem("tawbah_session_id");
-    queryClient.clear();
     // Reload to clear all cached API data
     window.location.href = "/";
   };

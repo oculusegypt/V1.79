@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,7 +10,10 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ZakiyModeProvider } from "@/context/ZakiyModeContext";
 import { DuaPeakModal } from "@/components/DuaPeakModal";
 import { AdhkarModal } from "@/components/AdhkarModal";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
+import { isNativeApp } from "@/lib/api-base";
 
 import { Layout } from "@/components/layout";
 import AdminApp from "@/pages/admin/AdminApp";
@@ -135,6 +138,141 @@ function Router() {
   );
 }
 
+function NativeBackButtonBridge() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let remove: (() => void) | undefined;
+    import("@capacitor/app").then(({ App }) => {
+      const handler = () => {
+        if (window.history.length > 1 && location !== "/") {
+          window.history.back();
+          return;
+        }
+        App.exitApp();
+      };
+      const listener = App.addListener("backButton", handler);
+      remove = () => listener.remove();
+    }).catch(() => {});
+    return () => {
+      try { remove?.(); } catch {}
+    };
+  }, [location]);
+
+  return null;
+}
+
+function NativePullToRefreshBridge() {
+  const queryClient = useQueryClient();
+  const [pulling, setPulling] = useState(false);
+  const [dy, setDy] = useState(0);
+  const dyRef = useRef(0);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let startY = 0;
+    let active = false;
+    let triggered = false;
+
+    const onStart = (e: TouchEvent) => {
+      if (window.scrollY > 0) return;
+      if (!e.touches || e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      active = true;
+      triggered = false;
+      setPulling(true);
+      setDy(0);
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!active) return;
+      const y = e.touches?.[0]?.clientY ?? 0;
+      const delta = Math.max(0, y - startY);
+      const capped = Math.min(140, delta);
+      dyRef.current = capped;
+      setDy(capped);
+      if (capped > 30) e.preventDefault();
+    };
+
+    const onEnd = async () => {
+      if (!active) return;
+      active = false;
+      const finalDy = dyRef.current;
+      setPulling(false);
+      setDy(0);
+      dyRef.current = 0;
+
+      if (!triggered && finalDy >= 90) {
+        triggered = true;
+        try {
+          const { Haptics, ImpactStyle } = await import("@capacitor/haptics");
+          await Haptics.impact({ style: ImpactStyle.Medium });
+        } catch {}
+        try {
+          await queryClient.invalidateQueries();
+          await queryClient.refetchQueries();
+        } catch {}
+      }
+    };
+
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd, { passive: true });
+    window.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, [queryClient]);
+
+  if (!isNativeApp() || (!pulling && dy <= 0)) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 0,
+        zIndex: 9999,
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          transform: `translateY(${dy}px)`,
+          transition: pulling ? "none" : "transform 180ms ease-out",
+          height: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "hsl(var(--muted-foreground))",
+          fontSize: 12,
+        }}
+      >
+        سحب للتحديث
+      </div>
+    </div>
+  );
+}
+
+function AuthCacheIsolationBridge() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? null;
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    queryClient.clear();
+  }, [queryClient, userId]);
+
+  return null;
+}
+
 function DuaPeakModalBridge() {
   const { duaPeakVisible, hideDuaPeak } = useNotifications();
   return <DuaPeakModal visible={duaPeakVisible} onClose={hideDuaPeak} />;
@@ -168,6 +306,17 @@ function StatusBarBridge() {
         : (opt?.lightPrimary ?? "#174d2b");
       
       StatusBar.setBackgroundColor({ color: accentColorValue }).catch(() => {});
+
+      // Android navigation bar (requires native plugin registered in MainActivity)
+      try {
+        const anyWindow = window as unknown as Record<string, unknown>;
+        const plugins = (anyWindow.Capacitor as Record<string, unknown> | undefined)?.Plugins as Record<string, unknown> | undefined;
+        const systemBars = plugins?.SystemBars as { setNavigationBarColor?: (opts: { color: string; darkIcons?: boolean }) => Promise<void> } | undefined;
+        systemBars?.setNavigationBarColor?.({
+          color: accentColorValue,
+          darkIcons: theme !== "dark",
+        }).catch(() => {});
+      } catch {}
     }).catch(() => {});
   }, [theme, accentColor, ready]);
 
@@ -178,10 +327,13 @@ export default function App() {
   return (
     <SettingsProvider>
       <StatusBarBridge />
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <NotificationsProvider>
-            <AppNotificationsProvider>
+      <AuthProvider>
+        <NotificationsProvider>
+          <AppNotificationsProvider>
+            <QueryClientProvider client={queryClient}>
+              <NativeBackButtonBridge />
+              <NativePullToRefreshBridge />
+              <AuthCacheIsolationBridge />
               <ZakiyModeProvider>
                 <TooltipProvider>
                   <ErrorBoundary>
@@ -192,10 +344,10 @@ export default function App() {
                   <Toaster />
                 </TooltipProvider>
               </ZakiyModeProvider>
-            </AppNotificationsProvider>
-          </NotificationsProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+            </QueryClientProvider>
+          </AppNotificationsProvider>
+        </NotificationsProvider>
+      </AuthProvider>
     </SettingsProvider>
   );
 }

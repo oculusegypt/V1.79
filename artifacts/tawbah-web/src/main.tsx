@@ -8,6 +8,7 @@ import { isNativeApp, getApiBase } from "./lib/api-base";
 initTheme();
 
 if (isNativeApp()) {
+  try { document.documentElement.classList.add("native-app"); } catch {}
   const apiBase = getApiBase();
   const nativeFetch = window.fetch.bind(window);
   window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {

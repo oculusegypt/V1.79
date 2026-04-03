@@ -28,11 +28,10 @@ async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, ti
 }
 
 export function useAppUserProgress() {
-  const { user } = useAuth();
+  const sessionId = getSessionId();
   return useQuery({
-    queryKey: ["/api/user/progress", user?.id ?? "guest"],
+    queryKey: ["/api/user/progress", sessionId],
     queryFn: async () => {
-      const sessionId = getSessionId();
       try {
         const res = await fetchWithTimeout(apiUrl(`/api/user/progress?sessionId=${encodeURIComponent(sessionId)}`));
         if (!res.ok) {
@@ -47,17 +46,15 @@ export function useAppUserProgress() {
         throw e;
       }
     },
-    enabled: !!user,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
 export function useAppHabits() {
-  const { user } = useAuth();
+  const sessionId = getSessionId();
   return useQuery({
-    queryKey: ["/api/habits", user?.id ?? "guest"],
+    queryKey: ["/api/habits", sessionId],
     queryFn: async () => {
-      const sessionId = getSessionId();
       const today = new Date().toISOString().split('T')[0];
       try {
         const res = await fetchWithTimeout(apiUrl(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${today}`));
@@ -70,16 +67,14 @@ export function useAppHabits() {
         throw e;
       }
     },
-    enabled: !!user,
   });
 }
 
 export function useAppDhikrCount() {
-  const { user } = useAuth();
+  const sessionId = getSessionId();
   return useQuery({
-    queryKey: ["/api/dhikr/count", user?.id ?? "guest"],
+    queryKey: ["/api/dhikr/count", sessionId],
     queryFn: async () => {
-      const sessionId = getSessionId();
       const today = new Date().toISOString().split('T')[0];
       try {
         const res = await fetchWithTimeout(apiUrl(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${today}`));
@@ -92,7 +87,6 @@ export function useAppDhikrCount() {
         throw e;
       }
     },
-    enabled: !!user,
   });
 }
 
@@ -174,9 +168,20 @@ export interface UserJourney {
 
 export function useUserJourney() {
   const { user } = useAuth();
-
+  const sessionId = getSessionId();
+  // Also check localStorage for persisted user
+  const localStorageUser = (() => {
+    try {
+      const stored = localStorage.getItem("tawbah_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const effectiveUser = user ?? localStorageUser;
+  
   return useQuery<UserJourney | null>({
-    queryKey: ["/api/user/journey", user?.id ?? "guest"],
+    queryKey: ["/api/user/journey", sessionId],
     queryFn: async () => {
       try {
         const res = await fetchWithTimeout(apiUrl("/api/user/journey"), {
@@ -189,7 +194,7 @@ export function useUserJourney() {
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!effectiveUser,
     staleTime: 1000 * 60 * 2,
     retry: 1,
   });

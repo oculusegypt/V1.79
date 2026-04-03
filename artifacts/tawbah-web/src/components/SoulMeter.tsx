@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getSessionId } from "@/lib/session";
 import { getApiBase } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
-import { useAuth } from "@/context/AuthContext";
 
 // ─── General Daily Faith Tasks (shown when journey is NOT active) ─────────────
 
@@ -310,10 +309,9 @@ export function SoulMeter() {
 
   // Check journey30 status
   const isJourneyActive = !!(progress?.covenantSigned && progress?.firstDayTasksCompleted);
-  const { user } = useAuth();
 
   const { data: j30 } = useQuery<Journey30Summary>({
-    queryKey: ["journey30-soul-meter", user?.id ?? "guest"],
+    queryKey: ["journey30-soul-meter", sessionId],
     queryFn: async () => {
       const sessionIdParam = getSessionId();
       const res = await fetch(`${getApiBase()}/journey30?sessionId=${encodeURIComponent(sessionIdParam || "")}`, { headers: { ...getAuthHeader() } });
@@ -325,7 +323,7 @@ export function SoulMeter() {
         streakDays: data.streakDays,
       };
     },
-    enabled: !!user,
+    enabled: !!sessionId && isJourneyActive,
     staleTime: 60 * 1000,
   });
 

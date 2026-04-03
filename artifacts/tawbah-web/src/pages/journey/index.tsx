@@ -71,7 +71,7 @@ export default function Journey30() {
         throw e;
       }
     },
-    enabled: !!user && !!sessionId,
+    enabled: !!sessionId,
     refetchInterval: false,
     retry: false,
   });

@@ -15,6 +15,7 @@ public class MainActivity extends BridgeActivity {
     // Switch from Launch (Splash) theme to the real app theme.
     // Without this, the splash/logo can appear during runtime (e.g. when long-press selecting text).
     setTheme(R.style.AppTheme_NoActionBar);
+    registerPlugin(SystemBarsPlugin.class);
     super.onCreate(savedInstanceState);
     // Show status bar and navigation bar
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

@@ -15,7 +15,6 @@ import { apiUrl } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
 import { BadgesSection } from "@/components/badges";
 import { useSettings } from "@/context/SettingsContext";
-import { useAuth } from "@/context/AuthContext";
 
 interface DayRecord {
   date: string;
@@ -394,16 +393,15 @@ function Journey30Track({ journey30Days }: { journey30Days: number }) {
 }
 
 function useJourney30Data() {
-  const { user } = useAuth();
+  const sessionId = getSessionId();
   return useQuery({
-    queryKey: ["/api/journey30-progress", user?.id ?? "guest"],
+    queryKey: ["/api/journey30-progress", sessionId],
     queryFn: async () => {
-      const sessionId = getSessionId();
       const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
       if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
       return res.json() as Promise<{ completedCount: number; currentDay: number; streakDays: number }>;
     },
-    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -421,11 +419,11 @@ function getBadgeCount(streakDays: number, journey30Days: number, avgHabits: num
 }
 
 export default function ProgressChart() {
+  const sessionId = getSessionId();
   const { data: progress } = useAppUserProgress();
   const { data: dhikr } = useAppDhikrCount();
   const { data: habits } = useAppHabits();
   const { data: journey30 } = useJourney30Data();
-  const { user } = useAuth();
   const [weekData, setWeekData] = useState<DayRecord[]>([]);
   const [activeTab, setActiveTab] = useState<"habits" | "istighfar">("habits");
   const [quote] = useState(() => MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)]);
@@ -433,11 +431,7 @@ export default function ProgressChart() {
   const ameenCount = getDuaPeakAmeenCount();
 
   useEffect(() => {
-    if (!user) {
-      setWeekData([]);
-      return;
-    }
-    const sessionId = getSessionId();
+    setWeekData([]);
     const last7 = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(); d.setDate(d.getDate() - (6 - i));
       return d.toISOString().split("T")[0];
@@ -462,7 +456,7 @@ export default function ProgressChart() {
         }
       })
     ).then(setWeekData);
-  }, [user?.id]);
+  }, [sessionId]);
 
   const todayHabits = habits || [];
   const completedToday = todayHabits.filter((h) => h.completed).length;

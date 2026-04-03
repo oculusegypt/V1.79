@@ -362,6 +362,10 @@
   }
 }
 
+.native-app body {
+  padding-top: 0px;
+}
+
 .glass-effect {
   @apply bg-white/70 dark:bg-black/50 backdrop-blur-md border border-white/20 dark:border-white/10;
 }

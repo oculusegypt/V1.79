@@ -6,7 +6,7 @@ import { getZakiyState } from "@/core/theme";
 import { cn } from "@/lib/utils";
 import { getSessionId } from "@/lib/session";
 import { voicePending } from "@/lib/voice-pending";
-import { getApiBase, isNativeApp } from "@/lib/api-base";
+import { aiUrl, isNativeApp } from "@/lib/api-base";
 import type { Message, MessageSegment, ApiHistory } from "./types";
 import { VOICE_PROFILES, VOICE_PROFILE_STORAGE_KEY, DEFAULT_VOICE_PROFILE_ID, GREETING } from "./constants";
 import { VoiceSelectorSheet } from "./components/VoiceSelectorSheet";
@@ -17,7 +17,6 @@ import { StarterCards } from "./components/StarterCards";
 
 export default function ZakiyPage() {
   const [, navigate] = useLocation();
-  const API_BASE = getApiBase();
   const [messages, setMessages] = useState<Message[]>([GREETING]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,8 +101,8 @@ export default function ZakiyPage() {
     async function checkAnniversaryAndRisk() {
       try {
         const [annRes, riskRes] = await Promise.all([
-          fetch(`${API_BASE}/zakiy/anniversary?sessionId=${sessionId}`, { signal: controller.signal }),
-          fetch(`${API_BASE}/zakiy/risk-check?sessionId=${sessionId}`, { signal: controller.signal }),
+          fetch(aiUrl(`/api/zakiy/anniversary?sessionId=${encodeURIComponent(sessionId)}`), { signal: controller.signal }),
+          fetch(aiUrl(`/api/zakiy/risk-check?sessionId=${encodeURIComponent(sessionId)}`), { signal: controller.signal }),
         ]);
         const [annData, riskData] = await Promise.all([
           annRes.json() as Promise<{ anniversary: { milestone: string; message: string } | null }>,
@@ -137,7 +136,7 @@ export default function ZakiyPage() {
 
     checkAnniversaryAndRisk();
     return () => controller.abort();
-  }, [sessionId, API_BASE]);
+  }, [sessionId]);
 
   function buildHistory(): ApiHistory[] {
     return messages
@@ -156,7 +155,7 @@ export default function ZakiyPage() {
 
   async function fetchSuggestions(history: ApiHistory[], msgId: string) {
     try {
-      const res = await fetch(`${API_BASE}/zakiy/suggestions`, {
+      const res = await fetch(aiUrl("/api/zakiy/suggestions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, sessionId }),
@@ -224,8 +223,7 @@ export default function ZakiyPage() {
     setLoading(true);
 
     try {
-      const url = `${API_BASE}/zakiy/message`;
-      const res = await fetch(url, {
+      const res = await fetch(aiUrl("/api/zakiy/message"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, history, sessionId, voiceProfile: voiceProfileId }),
@@ -242,7 +240,7 @@ export default function ZakiyPage() {
       handleBotResponse(String(data?.response ?? ""), data?.segments);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("[Zakiy] sendMessage failed:", { error: msg, apiBase: API_BASE });
+      console.error("[Zakiy] sendMessage failed:", { error: msg });
       // Keep the user-facing message friendly, but add a hint when it's clearly connectivity.
       if (msg === "Failed to fetch" || msg === "NetworkError" || msg.startsWith("HTTP_")) {
         addBotMessage("عذراً يا صاحبي، في مشكلة تقنية. تأكد من اتصال الإنترنت ورابط السيرفر ثم جرّب تاني.");
@@ -300,7 +298,7 @@ export default function ZakiyPage() {
 
           setLoading(true);
           const history = buildHistory();
-          const res = await fetch(`${API_BASE}/zakiy/voice`, {
+          const res = await fetch(aiUrl("/api/zakiy/voice"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ audioBase64: b64, history, sessionId, voiceProfile: voiceProfileId }),

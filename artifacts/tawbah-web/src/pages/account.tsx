@@ -203,25 +203,24 @@ export default function Account() {
   const { data: dhikrData } = useAppDhikrCount();
   const { data: habits } = useAppHabits();
   const { data: journey30 } = useQuery<{ completedCount: number; currentDay: number; streakDays: number }>({
-    queryKey: ["journey30-account", user?.id ?? "guest"],
+    queryKey: ["journey30-account"],
     queryFn: async () => {
       const sessionId = getSessionId();
       const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
       if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
       return res.json();
     },
-    enabled: !!user,
     staleTime: 60_000,
     retry: 1,
   });
 
-  const streak = user ? (journey30?.streakDays ?? progress?.streakDays ?? 0) : 0;
-  const signed = user ? progress?.covenantSigned : false;
-  const dhikrToday = user ? (dhikrData?.istighfar ?? 0) : 0;
-  const habitsCompleted = user ? (habits?.filter(h => h.completed).length ?? 0) : 0;
-  const habitsTotal = user ? (habits?.length ?? 0) : 0;
-  const journeyDays = user ? (journey30?.completedCount ?? 0) : 0;
-  const journeyCurrentDay = user ? (journey30?.currentDay ?? (journeyDays + 1)) : 1;
+  const streak = journey30?.streakDays ?? progress?.streakDays ?? 0;
+  const signed = progress?.covenantSigned;
+  const dhikrToday = dhikrData?.istighfar ?? 0;
+  const habitsCompleted = habits?.filter(h => h.completed).length ?? 0;
+  const habitsTotal = habits?.length ?? 0;
+  const journeyDays = journey30?.completedCount ?? 0;
+  const journeyCurrentDay = journey30?.currentDay ?? (journeyDays + 1);
 
   return (
     <div className="flex flex-col flex-1 pb-8 px-5 pt-5">

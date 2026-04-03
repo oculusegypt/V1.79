@@ -31,8 +31,6 @@ export function Journey30HeroCard() {
   const { theme } = useSettings();
   const isDark = theme === "dark";
 
-  if (!user) return null;
-
   const { data: j30 } = useQuery<Journey30Summary>({
     queryKey: ["journey30-home", sessionId],
     queryFn: async () => {
@@ -59,7 +57,7 @@ export function Journey30HeroCard() {
         clearTimeout(id);
       }
     },
-    enabled: !!user && !!sessionId,
+    enabled: !!sessionId,
     staleTime: 60 * 1000,
     retry: 1,
   });
@@ -266,7 +264,6 @@ export function SectionJourneyCard() {
   const { theme } = useSettings();
   const isDark = theme === "dark";
   const sessionId = getSessionId();
-  const { user } = useAuth();
 
   // Check journey30 directly to see if there's an active journey
   const { data: j30Data } = useQuery({
@@ -278,11 +275,11 @@ export function SectionJourneyCard() {
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: !!user && !!sessionId,
+    enabled: !!sessionId,
   });
 
   // Journey is active if either the journey meta says so OR we have journey30 data
-  const journeyActive = !!user && (journey?.active || (j30Data?.completedCount > 0 || j30Data?.currentDay > 1));
+  const journeyActive = journey?.active || (j30Data?.completedCount > 0 || j30Data?.currentDay > 1);
   const hasSin = journey?.hasSin ?? true;
 
   const [joinCount, setJoinCount] = useState(

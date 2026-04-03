@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { useLocation } from "wouter";
 import { getSessionId } from "@/lib/session";
-import { apiUrl } from "@/lib/api-base";
+import { aiUrl } from "@/lib/api-base";
 import { setZakiyState, mapDecisionToZakiyState } from "@/core/theme";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ export function ZakiyModeProvider({ children }: { children: ReactNode }) {
 
     try {
       const sessionId = getSessionId();
-      const resp = await fetch(apiUrl("/api/zakiy/decide"), {
+      const resp = await fetch(aiUrl("/api/zakiy/decide"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, trustLevel }),
