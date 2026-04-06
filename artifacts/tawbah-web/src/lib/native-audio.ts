@@ -17,10 +17,6 @@ export async function setAudioSrc(audio: HTMLAudioElement, url: string): Promise
 
   // Prefer direct streaming on native WebView. Fetching as Blob can lead to silent playback
   // or memory pressure on some Android devices.
-  try {
-    (audio as unknown as { crossOrigin?: string }).crossOrigin = "anonymous";
-  } catch {}
-
   audio.src = url;
   return;
 
