@@ -4,6 +4,40 @@ import http from "http";
 
 const router = Router();
 
+const RADIO_ALLOWED_HOSTS = new Set([
+  "stream.radiojar.com",
+  "radiojar.com",
+  "n08.radiojar.com",
+  "n07.radiojar.com",
+  "n06.radiojar.com",
+  "n05.radiojar.com",
+  "zayedquran.gov.ae",
+  "backup.qurango.net",
+  "qurango.net",
+  "live.mp3quran.net",
+  "mp3quran.net",
+  "radio.alaatv.com",
+  "islamicaudio.net",
+]);
+
+function isAllowedRadioUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+
+    const host = u.hostname.toLowerCase();
+    if (RADIO_ALLOWED_HOSTS.has(host)) return true;
+
+    // allow subdomains of some known providers
+    if (host.endsWith(".radiojar.com")) return true;
+    if (host.endsWith(".qurango.net")) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // ── Per-reciter CDN config ─────────────────────────────────────────────────
 // Islamic Network CDN uses different bitrates per reciter.
 // Some reciters (saadalghamdi) are only available on everyayah.com per-ayah.
@@ -89,17 +123,100 @@ router.get("/audio-proxy/quran/:reciter/:file", (req, res) => {
   }
 
   const get = url.startsWith("https") ? https.get : http.get;
-  get(url, (upstream) => {
+
+  const upstreamHeaders: Record<string, string> = {};
+  const range = req.headers.range;
+  if (typeof range === "string" && range.trim()) {
+    upstreamHeaders.range = range;
+  }
+
+  get(url, { headers: upstreamHeaders }, (upstream) => {
     if (upstream.statusCode && upstream.statusCode >= 400) {
       res.status(upstream.statusCode ?? 502).end();
       return;
     }
+
+    // Preserve upstream status code (200/206) for range requests.
+    if (upstream.statusCode) {
+      res.status(upstream.statusCode);
+    }
+
     res.setHeader("Content-Type", upstream.headers["content-type"] ?? "audio/mpeg");
     res.setHeader("Cache-Control", "public, max-age=86400");
     res.setHeader("Access-Control-Allow-Origin", "*");
+
+    const passthroughHeaders = [
+      "accept-ranges",
+      "content-range",
+      "content-length",
+    ] as const;
+
+    for (const h of passthroughHeaders) {
+      const v = upstream.headers[h];
+      if (typeof v === "string" && v.trim()) {
+        res.setHeader(h === "content-length" ? "Content-Length" : h, v);
+      }
+    }
+
     if (upstream.headers["content-length"]) {
       res.setHeader("Content-Length", upstream.headers["content-length"]);
     }
+    upstream.pipe(res);
+  }).on("error", () => {
+    res.status(502).end();
+  });
+});
+
+router.get("/audio-proxy/radio", (req, res) => {
+  const url = typeof req.query.url === "string" ? req.query.url : "";
+  if (!url || !isAllowedRadioUrl(url)) {
+    res.status(400).json({ error: "Invalid radio url" });
+    return;
+  }
+
+  const get = url.startsWith("https") ? https.get : http.get;
+
+  const upstreamHeaders: Record<string, string> = {
+    // Some providers behave better if you look like a browser request.
+    "user-agent": "Mozilla/5.0 TawbahApp RadioProxy",
+    accept: "*/*",
+    connection: "keep-alive",
+  };
+
+  const range = req.headers.range;
+  if (typeof range === "string" && range.trim()) {
+    upstreamHeaders.range = range;
+  }
+
+  get(url, { headers: upstreamHeaders }, (upstream) => {
+    if (upstream.statusCode && upstream.statusCode >= 400) {
+      res.status(upstream.statusCode ?? 502).end();
+      return;
+    }
+
+    if (upstream.statusCode) {
+      res.status(upstream.statusCode);
+    }
+
+    res.setHeader("Content-Type", upstream.headers["content-type"] ?? "audio/mpeg");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    const passthroughHeaders = [
+      "accept-ranges",
+      "content-range",
+      "content-length",
+      "icy-name",
+      "icy-description",
+    ] as const;
+
+    for (const h of passthroughHeaders) {
+      const v = upstream.headers[h];
+      if (typeof v === "string" && v.trim()) {
+        res.setHeader(h === "content-length" ? "Content-Length" : h, v);
+      }
+    }
+
     upstream.pipe(res);
   }).on("error", () => {
     res.status(502).end();
