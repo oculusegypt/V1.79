@@ -17,13 +17,12 @@ import {
 import { Journey30HeroCard } from "./Journey30HeroCard";
 
 export function SectionJourneyCard() {
-  const { data: journey } = useUserJourney();
+  const { data: journey, isLoading: journeyLoading } = useUserJourney();
   const { theme } = useSettings();
   const isDark = theme === "dark";
   const sessionId = getSessionId();
 
-  // Check journey30 directly to see if there's an active journey
-  const { data: j30Data } = useQuery({
+  const { data: j30Data, isLoading: j30Loading } = useQuery({
     queryKey: ["journey30-active-check", sessionId],
     queryFn: async () => {
       const res = await fetch(
@@ -36,12 +35,8 @@ export function SectionJourneyCard() {
       return res.json();
     },
     enabled: !!sessionId,
+    initialData: null,
   });
-
-  // Journey is active if either the journey meta says so OR we have journey30 data
-  const journeyActive =
-    journey?.active || (j30Data?.completedCount > 0 || j30Data?.currentDay > 1);
-  const hasSin = journey?.hasSin ?? true;
 
   const [joinCount, setJoinCount] = useState(
     () => 8400 + Math.floor(Math.random() * 300),
@@ -53,6 +48,15 @@ export function SectionJourneyCard() {
     );
     return () => clearInterval(t);
   }, []);
+
+  const isLoading = journeyLoading || j30Loading;
+
+  if (isLoading) {
+    return null;
+  }
+
+  const journeyActive = journey?.active || (j30Data?.completedCount > 0 || j30Data?.currentDay > 1);
+  const hasSin = journey?.hasSin ?? true;
 
   if (journeyActive) {
     return (

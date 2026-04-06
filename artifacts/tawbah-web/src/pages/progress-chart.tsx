@@ -419,15 +419,13 @@ function getBadgeCount(streakDays: number, journey30Days: number, avgHabits: num
 }
 
 export default function ProgressChart() {
-  const { data: progress } = useAppUserProgress();
-  const { data: dhikr } = useAppDhikrCount();
-  const { data: habits } = useAppHabits();
-  const { data: journey30 } = useJourney30Data();
+  const { data: progress, isLoading: progressLoading } = useAppUserProgress();
+  const { data: dhikr, isLoading: dhikrLoading } = useAppDhikrCount();
+  const { data: habits, isLoading: habitsLoading } = useAppHabits();
+  const { data: journey30, isLoading: journey30Loading } = useJourney30Data();
   const [weekData, setWeekData] = useState<DayRecord[]>([]);
   const [activeTab, setActiveTab] = useState<"habits" | "istighfar">("habits");
   const [quote] = useState(() => MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)]);
-  const sosStats = getSosStats();
-  const ameenCount = getDuaPeakAmeenCount();
 
   useEffect(() => {
     const sessionId = getSessionId();
@@ -456,6 +454,22 @@ export default function ProgressChart() {
       })
     ).then(setWeekData);
   }, []);
+
+  const sosStats = getSosStats();
+  const ameenCount = getDuaPeakAmeenCount();
+
+  const isLoading = progressLoading || dhikrLoading || habitsLoading || journey30Loading;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col flex-1 pb-8 px-5 pt-5">
+        <PageHeader title="خريطة التقدم" />
+        <div className="flex justify-center items-center h-64">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   const todayHabits = habits || [];
   const completedToday = todayHabits.filter((h) => h.completed).length;
