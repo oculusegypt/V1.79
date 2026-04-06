@@ -158,32 +158,24 @@ export default function Home() {
           title: "الأهم",
           icon: <Bot size={16} />,
           subtitle: "محادثة الزكي والورد اليومي",
-          containerClassName:
-            "bg-card/50 rounded-3xl p-5 shadow-sm border border-border/30",
         },
         {
           id: "daily" as const,
           title: "أدواتك اليومية",
           icon: <CircleDot size={16} />,
           subtitle: "أذكار • صلاة • قرآن",
-          containerClassName:
-            "bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20",
         },
         {
           id: "growth" as const,
           title: "النمو والمحتوى",
           icon: <BookOpen size={16} />,
           subtitle: "برامج • يوميات • تلاوات",
-          containerClassName:
-            "bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20",
         },
         {
           id: "community" as const,
           title: "المجتمع والمزيد",
           icon: <Users size={16} />,
           subtitle: undefined,
-          containerClassName:
-            "bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20",
         },
       ] as const,
     [],
@@ -385,16 +377,8 @@ export default function Home() {
                     return (
                       <BucketDroppable key={section.id} bucket={section.id}>
                         {({ isOver }) => (
-                          <section
-                            className={section.containerClassName}
-                            style={
-                              editMode && isOver
-                                ? {
-                                    outline: "2px dashed hsl(var(--primary)/0.45)",
-                                    outlineOffset: 6,
-                                  }
-                                : undefined
-                            }
+                          <div
+                            className={editMode && isOver ? "outline-2 outline-dashed outline-primary/45 outline-offset-4 rounded-3xl" : ""}
                           >
                             <SectionHeader
                               title={section.title}
@@ -415,14 +399,14 @@ export default function Home() {
                                 </div>
                               ))}
                             </div>
-                          </section>
+                          </div>
                         )}
                       </BucketDroppable>
                     );
                   })}
 
                   {itemsBySection.other.length > 0 && (
-                    <section className="bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20">
+                    <div>
                       <SectionHeader title="أخرى" icon={<Zap size={16} />} />
                       <div className="flex flex-wrap gap-3">
                         {itemsBySection.other.map((id) => (
@@ -434,7 +418,7 @@ export default function Home() {
                           </div>
                         ))}
                       </div>
-                    </section>
+                    </div>
                   )}
                 </div>
               </SortableContext>
