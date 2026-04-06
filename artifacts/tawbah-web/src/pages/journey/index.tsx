@@ -36,7 +36,7 @@ export default function Journey30() {
 
   const sessionId = getSessionId();
   const queryClient = useQueryClient();
-  const { data: journeyMeta } = useUserJourney();
+  const { data: journeyMeta, isLoading: journeyMetaLoading } = useUserJourney();
   const hasSin = journeyMeta?.hasSin ?? true;
   const [showRestoreCode, setShowRestoreCode] = useState(false);
   const [localAllDone, setLocalAllDone] = useState(false);
@@ -114,7 +114,7 @@ export default function Journey30() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || journeyMetaLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />

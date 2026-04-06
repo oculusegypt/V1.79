@@ -127,22 +127,59 @@ export default function Account() {
   const { settings: notifSettings, updateSettings: updateNotifSettings } = useNotifications();
   const { user, logout } = useAuth();
   const { aiMode, toggleAiMode } = useZakiyMode();
-  const { data: progress } = useAppUserProgress();
-  const { data: journeyMeta } = useUserJourney();
+  const { data: progress, isLoading: progressLoading } = useAppUserProgress();
+  const { data: journeyMeta, isLoading: journeyLoading } = useUserJourney();
   const hasSin = journeyMeta?.hasSin ?? true;
   const journeyActive = journeyMeta?.active ?? false;
   const [reciterOpen, setReciterOpen] = useState(false);
   const currentReciter = QURAN_RECITERS.find(r => r.id === quranReciterId) ?? QURAN_RECITERS[0]!;
 
+  const { data: dhikrData, isLoading: dhikrLoading } = useAppDhikrCount();
+  const { data: habits, isLoading: habitsLoading } = useAppHabits();
+  const { data: journey30, isLoading: journey30Loading } = useQuery<{ completedCount: number; currentDay: number; streakDays: number }>({
+    queryKey: ["journey30-account"],
+    queryFn: async () => {
+      const sessionId = getSessionId();
+      const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
+      if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
+      return res.json();
+    },
+    staleTime: 60_000,
+    retry: 1,
+  });
+
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [heroUploading, setHeroUploading] = useState(false);
   const heroInputRef = useRef<HTMLInputElement>(null);
 
-  // Profile picture state
   const [profilePreview, setProfilePreview] = useState<string | null>(() => {
     return localStorage.getItem("tawbah_profile_picture");
   });
   const profileInputRef = useRef<HTMLInputElement>(null);
+
+  const [heroLightPreview, setHeroLightPreview] = useState<string | null>(null);
+  const [heroLightUploading, setHeroLightUploading] = useState(false);
+  const heroLightInputRef = useRef<HTMLInputElement>(null);
+
+  const isLoading = progressLoading || journeyLoading || dhikrLoading || habitsLoading || journey30Loading;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col flex-1 pb-8 px-5 pt-5">
+        <div className="flex justify-center items-center h-full">
+          <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  const streak = journey30?.streakDays ?? progress?.streakDays ?? 0;
+  const signed = progress?.covenantSigned;
+  const dhikrToday = dhikrData?.istighfar ?? 0;
+  const habitsCompleted = habits?.filter(h => h.completed).length ?? 0;
+  const habitsTotal = habits?.length ?? 0;
+  const journeyDays = journey30?.completedCount ?? 0;
+  const journeyCurrentDay = journey30?.currentDay ?? (journeyDays + 1);
 
   const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,10 +213,6 @@ export default function Account() {
     window.dispatchEvent(new CustomEvent("hero-bg-changed", { detail: null }));
   };
 
-  const [heroLightPreview, setHeroLightPreview] = useState<string | null>(null);
-  const [heroLightUploading, setHeroLightUploading] = useState(false);
-  const heroLightInputRef = useRef<HTMLInputElement>(null);
-
   const handleHeroLightUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -199,28 +232,6 @@ export default function Account() {
     setHeroLightPreview(null);
     window.dispatchEvent(new CustomEvent("hero-bg-light-changed", { detail: null }));
   };
-
-  const { data: dhikrData } = useAppDhikrCount();
-  const { data: habits } = useAppHabits();
-  const { data: journey30 } = useQuery<{ completedCount: number; currentDay: number; streakDays: number }>({
-    queryKey: ["journey30-account"],
-    queryFn: async () => {
-      const sessionId = getSessionId();
-      const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
-      if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
-      return res.json();
-    },
-    staleTime: 60_000,
-    retry: 1,
-  });
-
-  const streak = journey30?.streakDays ?? progress?.streakDays ?? 0;
-  const signed = progress?.covenantSigned;
-  const dhikrToday = dhikrData?.istighfar ?? 0;
-  const habitsCompleted = habits?.filter(h => h.completed).length ?? 0;
-  const habitsTotal = habits?.length ?? 0;
-  const journeyDays = journey30?.completedCount ?? 0;
-  const journeyCurrentDay = journey30?.currentDay ?? (journeyDays + 1);
 
   return (
     <div className="flex flex-col flex-1 pb-8 px-5 pt-5">
