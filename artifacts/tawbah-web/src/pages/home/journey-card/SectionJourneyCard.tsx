@@ -11,8 +11,6 @@ import { getAuthHeader } from "@/lib/auth-client";
 import {
   StarDots,
   BentoCompassWidget,
-  DhikrCounterCell,
-  SecretOfTheDayCellBento,
 } from "../bento-cells";
 import { Journey30HeroCard } from "./Journey30HeroCard";
 
@@ -162,9 +160,10 @@ export function SectionJourneyCard() {
             ✦ ٣٠ يوماً من النور ✦
           </p>
           <h2
-            className="font-black leading-tight mb-2"
+            className="font-black mb-3 pb-1"
             style={{
               fontSize: 26,
+              lineHeight: 1.60,
               background: isDark
                 ? "linear-gradient(135deg, #ffffff 0%, #fde68a 40%, #f59e0b 70%, #fbbf24 100%)"
                 : "linear-gradient(135deg, #713f12 0%, #a16207 40%, #ca8a04 70%, #eab308 100%)",
@@ -237,16 +236,6 @@ export function SectionJourneyCard() {
               </span>
             </div>
           ))}
-        </div>
-
-        {/* Bento row */}
-        <div className="flex gap-2">
-          <div className="flex-[3]">
-            <DhikrCounterCell />
-          </div>
-          <div className="flex-[2]">
-            <SecretOfTheDayCellBento />
-          </div>
         </div>
 
         {/* CTA */}

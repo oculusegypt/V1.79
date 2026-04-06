@@ -276,12 +276,51 @@ export async function buildScheduledNotifications(
   const notifs: ScheduledNotif[] = [];
   const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon ... 5=Fri, 6=Sat
 
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const fmtTodayAt = (ms: number) => {
+    const d = new Date(ms);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  };
+  const parseTimeToTodayMs = (timeStr: string) => {
+    const [h, m] = timeStr.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h ?? 0, m ?? 0, 0, 0);
+    return d.getTime();
+  };
+  const calcSunPathPercent = (sunrise: string, maghrib: string) => {
+    const sr = parseTimeToTodayMs(sunrise);
+    const mg = parseTimeToTodayMs(maghrib);
+    const t = Date.now();
+    if (!Number.isFinite(sr) || !Number.isFinite(mg) || mg <= sr) return null;
+    const p = clamp01((t - sr) / (mg - sr));
+    return Math.round(p * 100);
+  };
+
+  const sunPathDots = (percent: number) => {
+    const p = clamp01(percent / 100);
+    const slots = 14;
+    const idx = Math.max(0, Math.min(slots - 1, Math.round(p * (slots - 1))));
+    let s = "";
+    for (let i = 0; i < slots; i++) {
+      s += i === idx ? "☀" : "·";
+    }
+    return s;
+  };
+
   // ── Prayer times ────────────────────────────────────────────────────────────
   const prayerTimings = settings.prayers.fajr || settings.prayers.dhuhr ||
     settings.prayers.asr || settings.prayers.maghrib || settings.prayers.isha ||
-    settings.prayers.sunrise
+    settings.prayers.sunrise || settings.morningAdhkar || settings.eveningAdhkar
     ? await fetchPrayerTimings()
     : null;
+
+  const sunPathPercent = prayerTimings
+    ? calcSunPathPercent(prayerTimings.Sunrise, prayerTimings.Maghrib)
+    : null;
+  const sunPathLine = sunPathPercent == null
+    ? ""
+    : `\nمسار الشمس اليوم\n${sunPathDots(sunPathPercent)}  ${sunPathPercent}%`;
 
   const PRAYER_MAP: Array<{ key: keyof typeof settings.prayers; time: keyof PrayerTimings; nameAr: string; body: string; url: string }> = [
     { key: "fajr",    time: "Fajr",    nameAr: "الفجر",   body: "حان وقت صلاة الفجر — ﴿وَقُرْآنَ الْفَجْرِ إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا﴾", url: "/prayer-times" },
@@ -297,12 +336,13 @@ export async function buildScheduledNotifications(
       if (!settings.prayers[p.key]) continue;
       const fireAt = timeToMs(prayerTimings[p.time], settings.prayers.advanceMinutes);
       if (fireAt > now - pastWindowMs) {
+        const timeLabel = fmtTodayAt(fireAt);
         notifs.push({
           tag: `prayer-${p.key}`,
           title: `🕌 وقت صلاة ${p.nameAr}`,
           body: settings.prayers.advanceMinutes > 0
-            ? `بعد ${settings.prayers.advanceMinutes} دقيقة — ${p.body}`
-            : p.body,
+            ? `بعد ${settings.prayers.advanceMinutes} دقيقة (${timeLabel}) — ${p.body}${sunPathLine}`
+            : `(${timeLabel}) — ${p.body}${sunPathLine}`,
           fireAt,
           url: p.url,
         });
@@ -317,7 +357,7 @@ export async function buildScheduledNotifications(
       notifs.push({
         tag: "morning-adhkar",
         title: "📿 أذكار الصباح",
-        body: "لا تنسَ أذكار الصباح — «ما من عبد يقول في صباح كل يوم وفي مساء كل ليلة...» ابدأ الآن",
+        body: `لا تنسَ أذكار الصباح — «ما من عبد يقول في صباح كل يوم وفي مساء كل ليلة...» ابدأ الآن${sunPathLine}`,
         fireAt,
         url: "/?adhkar=morning",
       });
@@ -331,7 +371,7 @@ export async function buildScheduledNotifications(
       notifs.push({
         tag: "evening-adhkar",
         title: "🌙 أذكار المساء",
-        body: "حان وقت أذكار المساء — أنت بحاجة إلى حصن الذكر الآن",
+        body: `حان وقت أذكار المساء — أنت بحاجة إلى حصن الذكر الآن${sunPathLine}`,
         fireAt,
         url: "/?adhkar=evening",
       });
