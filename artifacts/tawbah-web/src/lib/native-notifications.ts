@@ -31,6 +31,7 @@ interface LocalNotification {
   smallIcon?: string;
   largeIcon?: string;
   iconColor?: string;
+  attachments?: Array<{ id: string; url: string; options?: Record<string, unknown> }>;
 }
 
 const ANDROID_SMALL_ICON = "ic_stat_mosque";
@@ -133,6 +134,7 @@ export interface ScheduledItem {
   url?: string;
   channelId?: string;
   sound?: string;
+  attachments?: Array<{ id: string; url: string; options?: Record<string, unknown> }>;
 }
 
 let _scheduledIds: number[] = [];
@@ -182,6 +184,7 @@ export async function scheduleLocalNotifications(items: ScheduledItem[]): Promis
       smallIcon: ANDROID_SMALL_ICON,      
       largeIcon: ANDROID_LARGE_ICON,
       iconColor: "#2d7a4f",
+      attachments: item.attachments,
     };
     // For reminder channel: do not pass a custom sound so Android uses the device default notification sound.
     if (ch !== "reminder" && snd) base.sound = snd;
@@ -189,9 +192,19 @@ export async function scheduleLocalNotifications(items: ScheduledItem[]): Promis
   });
 
   try {
-    const result = await plugin.schedule({ notifications });
-    _scheduledIds = result.notifications.map(n => n.id);
-    console.log("[LocalNotif] Scheduled", _scheduledIds.length, "notifications");
+    try {
+      const result = await plugin.schedule({ notifications });
+      _scheduledIds = result.notifications.map(n => n.id);
+      console.log("[LocalNotif] Scheduled", _scheduledIds.length, "notifications");
+    } catch (e) {
+      const hasAttachments = notifications.some(n => (n.attachments?.length ?? 0) > 0);
+      if (!hasAttachments) throw e;
+      console.warn("[LocalNotif] Schedule failed with attachments; retrying without attachments");
+      const stripped = notifications.map(n => ({ ...n, attachments: undefined }));
+      const result = await plugin.schedule({ notifications: stripped });
+      _scheduledIds = result.notifications.map(n => n.id);
+      console.log("[LocalNotif] Scheduled (no attachments)", _scheduledIds.length, "notifications");
+    }
   } catch (e) {
     console.error("[LocalNotif] Schedule failed:", e);
   }
@@ -206,6 +219,7 @@ export async function showLocalNotifNow(params: {
   channelId?: string;
   sound?: string;
   url?: string;
+  attachments?: Array<{ id: string; url: string; options?: Record<string, unknown> }>;
 }): Promise<void> {
   const plugin = await getPlugin();
   if (!plugin) return;
@@ -228,13 +242,22 @@ export async function showLocalNotifNow(params: {
     smallIcon: ANDROID_SMALL_ICON,
     largeIcon: ANDROID_LARGE_ICON,
     iconColor: "#2d7a4f",
+    attachments: params.attachments,
   };
   // For reminder channel: do not pass a custom sound so Android uses the device default notification sound.
   if (ch !== "reminder" && snd) notification.sound = snd;
 
   try {
-    await plugin.schedule({ notifications: [notification] });
-    console.log("[LocalNotif] showLocalNotifNow scheduled id", _nowId);
+    try {
+      await plugin.schedule({ notifications: [notification] });
+      console.log("[LocalNotif] showLocalNotifNow scheduled id", _nowId);
+    } catch (e) {
+      const hasAttachments = (notification.attachments?.length ?? 0) > 0;
+      if (!hasAttachments) throw e;
+      console.warn("[LocalNotif] showLocalNotifNow failed with attachments; retrying without attachments");
+      await plugin.schedule({ notifications: [{ ...notification, attachments: undefined }] });
+      console.log("[LocalNotif] showLocalNotifNow scheduled (no attachments) id", _nowId);
+    }
   } catch (e) {
     console.error("[LocalNotif] showLocalNotifNow failed:", e);
   }

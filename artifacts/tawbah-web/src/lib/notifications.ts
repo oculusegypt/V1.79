@@ -181,6 +181,7 @@ interface ScheduledNotif {
   body: string;
   fireAt: number; // unix ms
   url?: string;
+  attachments?: Array<{ id: string; url: string; options?: Record<string, unknown> }>;
 }
 
 // ── Prayer times fetching ─────────────────────────────────────────────────────
@@ -199,7 +200,11 @@ const PRAYER_CACHE_KEY = "prayer_timings_cache";
 async function fetchPrayerTimings(): Promise<PrayerTimings | null> {
   const city = localStorage.getItem("prayerCity");
   const country = localStorage.getItem("prayerCountry");
-  if (!city || !country) return null;
+  const lat = localStorage.getItem("prayerLat");
+  const lng = localStorage.getItem("prayerLng");
+  const hasLatLng = !!lat && !!lng;
+  const canQuery = (city && country) || hasLatLng;
+  if (!canQuery) return null;
 
   // Try cache (valid for today)
   try {
@@ -212,10 +217,8 @@ async function fetchPrayerTimings(): Promise<PrayerTimings | null> {
   } catch { /* continue */ }
 
   try {
-    const lat = localStorage.getItem("prayerLat");
-    const lng = localStorage.getItem("prayerLng");
-    const url = (country === "Auto" && lat && lng)
-      ? `https://api.aladhan.com/v1/timings?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}&method=4`
+    const url = (country === "Auto" && hasLatLng) || (!city || !country)
+      ? `https://api.aladhan.com/v1/timings?latitude=${encodeURIComponent(lat!)}&longitude=${encodeURIComponent(lng!)}&method=4`
       : `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=4`;
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -320,7 +323,92 @@ export async function buildScheduledNotifications(
     : null;
   const sunPathLine = sunPathPercent == null
     ? ""
-    : `\nمسار الشمس اليوم\n${sunPathDots(sunPathPercent)}  ${sunPathPercent}%`;
+    : `مسار الشمس اليوم\n${sunPathDots(sunPathPercent)}  ${sunPathPercent}%`;
+  const sunPathInline = sunPathPercent == null
+    ? ""
+    : `مسار الشمس: ${sunPathDots(sunPathPercent)}  ${sunPathPercent}%`;
+
+  const buildSunPathCardPng = (percent: number): string | null => {
+    try {
+      if (typeof document === "undefined") return null;
+      const w = 280;
+      const h = 120;
+      const dpr = Math.max(1, Math.min(2, (window.devicePixelRatio || 1)));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.scale(dpr, dpr);
+
+      const p = clamp01(percent / 100);
+
+      // Background gradient
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#0c4a6e");
+      g.addColorStop(1, "#0ea5e9");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      // Arc path (quadratic Bezier) similar to PrayerSkyHeader
+      const x0 = 22, y0 = 86;
+      const cx = w / 2, cy = 18;
+      const x1 = w - 22, y1 = 86;
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 6]);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(cx, cy, x1, y1);
+      ctx.stroke();
+      ctx.restore();
+
+      // Sun position on quadratic Bezier
+      const t = Math.min(p, 0.98);
+      const sunX = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1;
+      const sunY = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1;
+
+      // Glow
+      ctx.fillStyle = "rgba(253,224,71,0.30)";
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
+      ctx.fill();
+      // Sun core
+      ctx.fillStyle = "#fde047";
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Label
+      ctx.fillStyle = "rgba(255,255,255,0.70)";
+      ctx.font = "600 13px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("مسار الشمس اليوم", w / 2, h - 14);
+
+      // Percent
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "700 16px system-ui";
+      ctx.fillText(`${percent}%`, w / 2, 28);
+
+      return canvas.toDataURL("image/png");
+    } catch {
+      return null;
+    }
+  };
+
+  const sunPathAttachment = sunPathPercent == null
+    ? null
+    : (() => {
+        const url = buildSunPathCardPng(sunPathPercent);
+        if (!url) return null;
+        return [{ id: "sunpath", url }];
+      })();
 
   const PRAYER_MAP: Array<{ key: keyof typeof settings.prayers; time: keyof PrayerTimings; nameAr: string; body: string; url: string }> = [
     { key: "fajr",    time: "Fajr",    nameAr: "الفجر",   body: "حان وقت صلاة الفجر — ﴿وَقُرْآنَ الْفَجْرِ إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا﴾", url: "/prayer-times" },
@@ -341,8 +429,8 @@ export async function buildScheduledNotifications(
           tag: `prayer-${p.key}`,
           title: `🕌 وقت صلاة ${p.nameAr}`,
           body: settings.prayers.advanceMinutes > 0
-            ? `بعد ${settings.prayers.advanceMinutes} دقيقة (${timeLabel}) — ${p.body}${sunPathLine}`
-            : `(${timeLabel}) — ${p.body}${sunPathLine}`,
+            ? `بعد ${settings.prayers.advanceMinutes} دقيقة (${timeLabel}) — ${p.body}${sunPathLine ? `\n${sunPathLine}` : ""}`
+            : `(${timeLabel}) — ${p.body}${sunPathLine ? `\n${sunPathLine}` : ""}`,
           fireAt,
           url: p.url,
         });
@@ -357,9 +445,10 @@ export async function buildScheduledNotifications(
       notifs.push({
         tag: "morning-adhkar",
         title: "📿 أذكار الصباح",
-        body: `لا تنسَ أذكار الصباح — «ما من عبد يقول في صباح كل يوم وفي مساء كل ليلة...» ابدأ الآن${sunPathLine}`,
+        body: "لا تنسَ أذكار الصباح — «ما من عبد يقول في صباح كل يوم وفي مساء كل ليلة...» ابدأ الآن",
         fireAt,
         url: "/?adhkar=morning",
+        attachments: sunPathAttachment ?? undefined,
       });
     }
   }
@@ -371,9 +460,10 @@ export async function buildScheduledNotifications(
       notifs.push({
         tag: "evening-adhkar",
         title: "🌙 أذكار المساء",
-        body: `حان وقت أذكار المساء — أنت بحاجة إلى حصن الذكر الآن${sunPathLine}`,
+        body: "حان وقت أذكار المساء — أنت بحاجة إلى حصن الذكر الآن",
         fireAt,
         url: "/?adhkar=evening",
+        attachments: sunPathAttachment ?? undefined,
       });
     }
   }
@@ -622,6 +712,7 @@ export async function scheduleAll(settings: NotificationSettings): Promise<void>
         url: n.url,
         channelId,
         sound,
+        attachments: n.attachments,
       };
     });
     await scheduleLocalNotifications(items);

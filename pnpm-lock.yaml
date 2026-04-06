@@ -129,6 +129,11 @@ overrides:
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   esbuild: 0.27.3
 
+patchedDependencies:
+  '@capacitor/local-notifications@8.0.2':
+    hash: a36adc441f39cf9dd1a7be7d3f59f6ece5bda7b3d709eafc1fcfff260350cb40
+    path: patches/@capacitor__local-notifications@8.0.2.patch
+
 importers:
 
   .:
@@ -410,7 +415,7 @@ importers:
         version: 7.0.5(@capacitor/core@7.6.0)
       '@capacitor/local-notifications':
         specifier: ^8.0.2
-        version: 8.0.2(@capacitor/core@7.6.0)
+        version: 8.0.2(patch_hash=a36adc441f39cf9dd1a7be7d3f59f6ece5bda7b3d709eafc1fcfff260350cb40)(@capacitor/core@7.6.0)
       '@capacitor/push-notifications':
         specifier: ^7.0.0
         version: 7.0.6(@capacitor/core@7.6.0)
@@ -6094,7 +6099,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 7.6.0
 
-  '@capacitor/local-notifications@8.0.2(@capacitor/core@7.6.0)':
+  '@capacitor/local-notifications@8.0.2(patch_hash=a36adc441f39cf9dd1a7be7d3f59f6ece5bda7b3d709eafc1fcfff260350cb40)(@capacitor/core@7.6.0)':
     dependencies:
       '@capacitor/core': 7.6.0
 
