@@ -174,8 +174,6 @@ router.get("/audio-proxy/radio", (req, res) => {
     return;
   }
 
-  const get = url.startsWith("https") ? https.get : http.get;
-
   const upstreamHeaders: Record<string, string> = {
     // Some providers behave better if you look like a browser request.
     "user-agent": "Mozilla/5.0 TawbahApp RadioProxy",
@@ -188,39 +186,68 @@ router.get("/audio-proxy/radio", (req, res) => {
     upstreamHeaders.range = range;
   }
 
-  get(url, { headers: upstreamHeaders }, (upstream) => {
-    if (upstream.statusCode && upstream.statusCode >= 400) {
-      res.status(upstream.statusCode ?? 502).end();
-      return;
-    }
+  const MAX_REDIRECTS = 5;
 
-    if (upstream.statusCode) {
-      res.status(upstream.statusCode);
-    }
+  const requestOnce = (currentUrl: string, redirectsLeft: number): void => {
+    const get = currentUrl.startsWith("https") ? https.get : http.get;
+    get(currentUrl, { headers: upstreamHeaders }, (upstream) => {
+      const sc = upstream.statusCode ?? 0;
+      const isRedirect = sc === 301 || sc === 302 || sc === 303 || sc === 307 || sc === 308;
+      const location = typeof upstream.headers.location === "string" ? upstream.headers.location : "";
 
-    res.setHeader("Content-Type", upstream.headers["content-type"] ?? "audio/mpeg");
-    res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    const passthroughHeaders = [
-      "accept-ranges",
-      "content-range",
-      "content-length",
-      "icy-name",
-      "icy-description",
-    ] as const;
-
-    for (const h of passthroughHeaders) {
-      const v = upstream.headers[h];
-      if (typeof v === "string" && v.trim()) {
-        res.setHeader(h === "content-length" ? "Content-Length" : h, v);
+      if (isRedirect && location && redirectsLeft > 0) {
+        upstream.resume();
+        let nextUrl = "";
+        try {
+          nextUrl = new URL(location, currentUrl).toString();
+        } catch {
+          res.status(502).end();
+          return;
+        }
+        if (!isAllowedRadioUrl(nextUrl)) {
+          res.status(502).end();
+          return;
+        }
+        requestOnce(nextUrl, redirectsLeft - 1);
+        return;
       }
-    }
 
-    upstream.pipe(res);
-  }).on("error", () => {
-    res.status(502).end();
-  });
+      if (sc >= 400) {
+        res.status(sc || 502).end();
+        return;
+      }
+
+      // Preserve upstream status code (200/206) for range requests.
+      if (upstream.statusCode) {
+        res.status(upstream.statusCode);
+      }
+
+      res.setHeader("Content-Type", upstream.headers["content-type"] ?? "audio/mpeg");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      const passthroughHeaders = [
+        "accept-ranges",
+        "content-range",
+        "content-length",
+        "icy-name",
+        "icy-description",
+      ] as const;
+
+      for (const h of passthroughHeaders) {
+        const v = upstream.headers[h];
+        if (typeof v === "string" && v.trim()) {
+          res.setHeader(h === "content-length" ? "Content-Length" : h, v);
+        }
+      }
+
+      upstream.pipe(res);
+    }).on("error", () => {
+      res.status(502).end();
+    });
+  };
+
+  requestOnce(url, MAX_REDIRECTS);
 });
 
 export default router;
