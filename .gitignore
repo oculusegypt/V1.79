@@ -55,6 +55,9 @@ DB---supabase---*.txt
 .cache/
 .local/
 
+# Downloaded islamicaudio media (keep out of git to avoid APK size bloat)
+artifacts/tawbah-web/public/islamicaudio/
+
 # Capacitor native platform directories (generated locally — do not commit)
 # Run: cd artifacts/tawbah-web && npx cap add android
 # artifacts/tawbah-web/android/

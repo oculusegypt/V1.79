@@ -4,7 +4,7 @@ import { ArrowRight, Tv } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 import { motion } from "framer-motion";
 import { setAudioSrc } from "@/lib/native-audio";
-import { getApiBase, isNativeApp } from "@/lib/api-base";
+import { apiUrl, getApiBase, isNativeApp } from "@/lib/api-base";
 
 import { CATEGORIES, FEATURED, PROGRAMS } from "./data";
 import type { CategoryId, RadioStation } from "./types";
@@ -12,6 +12,13 @@ import { HeroBanner } from "./HeroBanner";
 import { LiveRadioSection } from "./LiveRadioSection";
 import { PodcastProgramsSection } from "./PodcastProgramsSection";
 import { CategoryRow } from "./CategoryRow";
+
+function resolvePodcastMediaUrl(url: string): string {
+  if (url.startsWith("/islamicaudio/")) {
+    return `https://islamicaudio.net${url.slice("/islamicaudio".length)}`;
+  }
+  return url;
+}
 
 export default function IslamicPrograms() {
   const [, navigate] = useLocation();
@@ -29,8 +36,8 @@ export default function IslamicPrograms() {
   const playUrl = React.useCallback(async (url: string, opts?: { useRadioProxy?: boolean }) => {
     const useRadioProxy = opts?.useRadioProxy === true;
     const resolvedUrl = isNativeApp() && useRadioProxy
-      ? `${getApiBase().replace(/\/+$/, "")}/audio-proxy/radio?url=${encodeURIComponent(url)}`
-      : url;
+      ? `${getApiBase().replace(/\/\/+$/, "")}/audio-proxy/radio?url=${encodeURIComponent(url)}`
+      : apiUrl(resolvePodcastMediaUrl(url));
     if (!audioRef.current) audioRef.current = new Audio();
     const a = audioRef.current;
     a.preload = "none";
@@ -53,7 +60,7 @@ export default function IslamicPrograms() {
       console.error("[Radio] audio error", resolvedUrl, a.error);
     };
 
-    await setAudioSrc(a, resolvedUrl);
+    await setAudioSrc(a, resolvedUrl, !useRadioProxy);
     a.load();
     try {
       await a.play();
