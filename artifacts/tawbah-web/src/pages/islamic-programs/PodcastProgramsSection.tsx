@@ -1,14 +1,24 @@
 import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Mic2, ChevronLeft } from "lucide-react";
 import type { PodcastCategory } from "./types";
 import { PODCAST_CATEGORIES } from "./data";
+import { extractDominantColors } from "../../lib/image-colors";
 
 const CARD_W = 118;
 const CARD_H = 86;
 const GAP = 10;
 const FEATURED_W = 148;
 const FEATURED_H = CARD_H * 2 + GAP;
+
+function resolvePodcastImageUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  if (url.startsWith("/islamicaudio/")) {
+    return `https://islamicaudio.net${url.slice("/islamicaudio".length)}`;
+  }
+  return url;
+}
 
 export function PodcastProgramsSection({
   isDark,
@@ -22,6 +32,25 @@ export function PodcastProgramsSection({
   onPlayEpisode: (payload: { episodeId: string; mediaUrl: string }) => void;
 }) {
   const [, setLocation] = useLocation();
+  const [episodeColors, setEpisodeColors] = useState<Record<string, { color: string; colorTo: string }>>({});
+
+  useEffect(() => {
+    const loadColors = async () => {
+      const colors: Record<string, { color: string; colorTo: string }> = {};
+      for (const cat of PODCAST_CATEGORIES) {
+        for (const ep of cat.episodes) {
+          if (ep.imageUrl && !episodeColors[`${cat.id}:${ep.id}`]) {
+            const extracted = await extractDominantColors(ep.imageUrl);
+            colors[`${cat.id}:${ep.id}`] = extracted;
+          }
+        }
+      }
+      if (Object.keys(colors).length > 0) {
+        setEpisodeColors(prev => ({ ...prev, ...colors }));
+      }
+    };
+    loadColors();
+  }, []);
 
   const navigateToCategory = (catId: string) => {
     setLocation(`/islamic-programs/podcast/${catId}`);
@@ -40,6 +69,7 @@ export function PodcastProgramsSection({
         const featuredEpisode = cat.episodes[0];
         const displayEpisodes = cat.episodes.slice(1, 6);
         const hasMore = cat.episodes.length > 5;
+        const featuredImageUrl = resolvePodcastImageUrl(featuredEpisode?.imageUrl);
 
         return (
           <div key={cat.id} className="mb-6">
@@ -69,9 +99,9 @@ export function PodcastProgramsSection({
                   >
                     <div className="absolute top-[-25px] right-[-25px] w-[100px] h-[100px] rounded-full opacity-15 bg-white" />
                     <div className="absolute bottom-[-20px] left-[-20px] w-[80px] h-[80px] rounded-full opacity-10 bg-white" />
-                    {featuredEpisode.imageUrl && (
+                    {featuredImageUrl && (
                       <div className="absolute inset-0">
-                        <img src={featuredEpisode.imageUrl} alt={featuredEpisode.title} className="w-full h-full object-cover opacity-40" />
+                        <img src={featuredImageUrl} alt={featuredEpisode.title} className="w-full h-full object-cover opacity-40" />
                       </div>
                     )}
                     {activeEpisodeId === `${cat.id}:${featuredEpisode.id}` && playing && (
@@ -103,8 +133,11 @@ export function PodcastProgramsSection({
                 {displayEpisodes.map((ep, i) => {
                   const epId = `${cat.id}:${ep.id}`;
                   const isActive = activeEpisodeId === epId;
-                  const cardColor = cat.color;
-                  const cardColorTo = cat.colorTo;
+                  const epImageUrl = resolvePodcastImageUrl(ep.imageUrl);
+                  // Use extracted color from image, fallback to category color
+                  const extracted = episodeColors[epId];
+                  const cardColor = extracted?.color || cat.color;
+                  const cardColorTo = extracted?.colorTo || cat.colorTo;
                   return (
                     <motion.div
                       key={epId}
@@ -118,21 +151,20 @@ export function PodcastProgramsSection({
                         style={{
                           width: CARD_W,
                           height: CARD_H,
-                          background: isActive 
-                            ? `linear-gradient(135deg, ${cardColor}, ${cardColorTo})`
-                            : ep.imageUrl 
-                              ? `linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.7))`
-                              : `linear-gradient(135deg, ${cardColor}dd, ${cardColorTo}dd)`,
+                          backgroundImage: epImageUrl
+                            ? `linear-gradient(135deg, ${cardColor}99, ${cardColorTo}99), url(${epImageUrl})`
+                            : isActive 
+                              ? `linear-gradient(135deg, ${cardColor}, ${cardColorTo})`
+                              : `linear-gradient(135deg, ${cardColor}aa, ${cardColorTo}aa)`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
                         }}
                       >
-                        {ep.imageUrl && (
-                          <img src={ep.imageUrl} alt={ep.title} className="absolute inset-0 w-full h-full object-cover" />
-                        )}
-                        <div className="absolute inset-0" style={{ background: isActive ? `linear-gradient(135deg, ${cardColor}, ${cardColorTo})` : ep.imageUrl ? 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.8))' : `linear-gradient(135deg, ${cardColor}dd, ${cardColorTo}dd)` }} />
                         <div className="absolute top-[-12px] right-[-12px] w-[50px] h-[50px] rounded-full opacity-15 bg-white" />
                         <div className="absolute top-2 right-2 w-8 h-8 rounded-lg overflow-hidden shrink-0 border-2 border-white/30">
-                          {ep.imageUrl ? (
-                            <img src={ep.imageUrl} alt={ep.title} className="w-full h-full object-cover" />
+                          {epImageUrl ? (
+                            <img src={epImageUrl} alt={ep.title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full bg-white/10 flex items-center justify-center text-[16px]">🎙️</div>
                           )}
