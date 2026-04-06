@@ -50,11 +50,19 @@
 **الدوال الرئيسية:**
 
 ```typescript
+// تحويل الروابط المحلية إلى روابط خارجية للبودكاست
+function resolvePodcastMediaUrl(url: string): string {
+  if (url.startsWith("/islamicaudio/")) {
+    return `https://islamicaudio.net${url.slice("/islamicaudio".length)}`;
+  }
+  return url;
+}
+
 const playUrl = async (url: string, opts?: { useRadioProxy?: boolean }) => {
   const useRadioProxy = opts?.useRadioProxy === true;
   const resolvedUrl = isNativeApp() && useRadioProxy
     ? `${getApiBase().replace(/\/+$/, "")}/audio-proxy/radio?url=${encodeURIComponent(url)}`
-    : url;
+    : apiUrl(resolvePodcastMediaUrl(url));
   
   // crossOrigin logic
   (a as unknown as { crossOrigin: string | null }).crossOrigin = isNativeApp() && useRadioProxy
@@ -65,6 +73,8 @@ const playUrl = async (url: string, opts?: { useRadioProxy?: boolean }) => {
   await setAudioSrc(a, resolvedUrl, !useRadioProxy);
 }
 ```
+
+**ملاحظة:** `resolvePodcastMediaUrl()` تحول `/islamicaudio/assets/media/...` إلى `https://islamicaudio.net/assets/media/...` لتجنب أخطاء DEMUXER_ERROR.
 
 ### 3.2 `src/pages/podcast-category.tsx` (صفحة التصنيف)
 
@@ -78,8 +88,29 @@ const playUrl = async (url: string, opts?: { useRadioProxy?: boolean }) => {
 // إنشاء Episode ID مركب للمطابقة مع الصفحة الرئيسية
 const compositeEpisodeId = `${category.id}:${episodeId}`;
 
-// استخدام forceDirect=true للبودكاست
-await setAudioSrc(a, mediaUrl, true);
+// تحويل الروابط المحلية + استخدام forceDirect=true للبودكاست
+await setAudioSrc(a, apiUrl(resolvePodcastMediaUrl(mediaUrl)), true);
+```
+
+### 3.3.1 دوال تحويل الروابط
+
+```typescript
+// تحويل روابط الصور المحلية إلى خارجية
+function resolvePodcastImageUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  if (url.startsWith("/islamicaudio/")) {
+    return `https://islamicaudio.net${url.slice("/islamicaudio".length)}`;
+  }
+  return url;
+}
+
+// تحويل روابط الصوت المحلية إلى خارجية
+function resolvePodcastMediaUrl(url: string): string {
+  if (url.startsWith("/islamicaudio/")) {
+    return `https://islamicaudio.net${url.slice("/islamicaudio".length)}`;
+  }
+  return url;
+}
 ```
 
 ### 3.3 `src/lib/native-audio.ts` (المكتبة الأساسية)
@@ -145,9 +176,24 @@ export async function setAudioSrc(
 1. **النقر على الحلقة** → `onPlayEpisode({ episodeId, mediaUrl })`
 2. **إنشاء Episode ID مركب** → `${categoryId}:${episodeId}`
 3. **استدعاء playUrl()** → `{ useRadioProxy: false }`
-4. **استخدام الرابط المباشر** → `mediaUrl`
-5. **إعداد crossOrigin** → `null`
-6. **التشغيل** → HTML5 Audio
+4. **تحويل الرابط** → `resolvePodcastMediaUrl(mediaUrl)` (إذا كان مسار محلي `/islamicaudio/...`)
+5. **تمرير عبر apiUrl()** → `apiUrl(resolvedUrl)`
+6. **إعداد crossOrigin** → `null`
+7. **التشغيل** → HTML5 Audio
+
+### 4.3 تحويل الروابط المحلية إلى خارجية
+
+عند وجود روابط نسبية مثل `/islamicaudio/assets/media/...` في `data.tsx`، يتم تحويلها:
+
+```
+قبل: /islamicaudio/assets/media/episode.mp3
+بعد: https://islamicaudio.net/assets/media/episode.mp3
+```
+
+هذا يضمن:
+- **الويب:** يعمل بدون الحاجة لملفات محلية
+- **الـAPK:** يتجنب أخطاء DEMUXER_ERROR
+- **الصور:** تعرض من المصدر الخارجي بدلاً من التضمين
 
 ## 5) إدارة الحالة
 
