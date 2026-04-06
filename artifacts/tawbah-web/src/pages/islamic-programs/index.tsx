@@ -35,7 +35,9 @@ export default function IslamicPrograms() {
     const a = audioRef.current;
     a.preload = "none";
     try {
-      (a as unknown as { crossOrigin?: string }).crossOrigin = "anonymous";
+      (a as unknown as { crossOrigin: string | null }).crossOrigin = isNativeApp() && useRadioProxy
+        ? "anonymous"
+        : null;
     } catch {}
     try {
       (a as unknown as { playsInline?: boolean }).playsInline = true;
