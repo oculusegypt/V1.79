@@ -585,7 +585,9 @@ export async function scheduleAll(settings: NotificationSettings): Promise<void>
       };
     });
     await scheduleLocalNotifications(items);
-    void scheduleServerPush(notifs);
+    // Prevent duplicates: if this device previously scheduled server push jobs,
+    // clear them now so only LocalNotifications will fire on native.
+    void scheduleServerPush([]);
     return;
   }
 
