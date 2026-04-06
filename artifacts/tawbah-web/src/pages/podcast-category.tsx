@@ -54,6 +54,10 @@ export default function PodcastCategoryPage() {
     a.addEventListener("ended", onEnded);
     return () => {
       a.removeEventListener("ended", onEnded);
+      // إيقاف الصوت عند مغادرة الصفحة
+      a.pause();
+      a.currentTime = 0;
+      setPlayingId(null);
     };
   }, []);
 

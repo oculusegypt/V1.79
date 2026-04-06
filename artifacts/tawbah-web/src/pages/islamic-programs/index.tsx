@@ -99,6 +99,19 @@ export default function IslamicPrograms() {
     return () => clearInterval(t);
   }, []);
 
+  // إيقاف الصوت عند مغادرة الصفحة
+  React.useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsAudioPlaying(false);
+        setActiveRadioId(null);
+        setActiveEpisodeId(null);
+      }
+    };
+  }, []);
+
   const visibleCategories = activeCategory === "all"
     ? CATEGORIES.map((c) => c.id)
     : [activeCategory];
