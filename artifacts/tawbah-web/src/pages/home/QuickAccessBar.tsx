@@ -15,7 +15,7 @@ const QUICK_ACCESS = [
 export function QuickAccessBar() {
   return (
     <div
-      className="flex gap-2 overflow-x-auto py-0.5"
+      className="flex gap-3 overflow-x-auto py-1 px-1"
       style={
         {
           scrollbarWidth: "none",
@@ -26,16 +26,17 @@ export function QuickAccessBar() {
       {QUICK_ACCESS.map((item) => (
         <Link key={item.href} href={item.href}>
           <motion.div
-            whileTap={{ scale: 0.9 }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl whitespace-nowrap shrink-0 cursor-pointer"
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.02 }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl whitespace-nowrap shrink-0 cursor-pointer shadow-sm"
             style={{
-              background: `${item.color}16`,
-              border: `1px solid ${item.color}2e`,
+              background: `linear-gradient(135deg, ${item.color}15 0%, ${item.color}08 100%)`,
+              border: `1px solid ${item.color}30`,
             }}
           >
-            <span style={{ fontSize: 13 }}>{item.emoji}</span>
+            <span style={{ fontSize: 16 }}>{item.emoji}</span>
             <span
-              className="text-[11px] font-bold"
+              className="text-xs font-semibold"
               style={{ color: item.color }}
             >
               {item.label}

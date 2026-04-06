@@ -313,7 +313,9 @@ export function SoulMeter() {
   const { data: j30 } = useQuery<Journey30Summary>({
     queryKey: ["journey30-soul-meter", sessionId],
     queryFn: async () => {
-      const res = await fetch(`${getApiBase()}/journey30`, { headers: { ...getAuthHeader() } });
+      const sessionIdParam = getSessionId();
+      const res = await fetch(`${getApiBase()}/journey30?sessionId=${encodeURIComponent(sessionIdParam || "")}`, { headers: { ...getAuthHeader() } });
+      if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
       const data = await res.json();
       return {
         completedCount: data.completedCount,

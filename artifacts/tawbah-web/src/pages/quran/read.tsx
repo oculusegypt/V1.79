@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
 import { setAudioSrc } from "@/lib/native-audio";
+import { preloadQuranVerseFast, preloadQuranVerseForCache, getCachedAudioUrl, type QuranAudioSource } from "@/lib/quran-audio";
+import { preloadQuranVerseNative, getCachedAudioUrlNative } from "@/lib/quran-audio-native";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +41,8 @@ function isBismillahOnly(text: string): boolean {
 }
 
 function cdnUrl(surahId: number, ayahNum: number, reciterId: string) {
-  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${toGlobalAyah(surahId, ayahNum)}.mp3`;
+  const globalAyah = toGlobalAyah(surahId, ayahNum);
+  return `/api/audio-proxy/quran/${encodeURIComponent(reciterId)}/${globalAyah}.mp3`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -185,7 +188,42 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
   const [isPlaying, setIsPlaying] = useState(false);
   const [fontSize, setFontSize] = useState(22);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadRef = useRef<HTMLAudioElement | null>(null);
+  const preloadedIdxRef = useRef<number | null>(null);
+  const isPlayingRef = useRef(false);
+  const playingIdxRef = useRef<number | null>(null);
+
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const webSourcesRef = useRef<{ idx: number; src: AudioBufferSourceNode; startAt: number; dur: number }[]>([]);
+  const webStartAtRef = useRef<number | null>(null);
+  const webPausedAtRef = useRef<number>(0);
+  const webCurrentBufferDurRef = useRef<number>(0);
+  const webDecodeCacheRef = useRef<Map<number, AudioBuffer>>(new Map());
+  const webUsingRef = useRef<boolean>(false);
   const spanRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { playingIdxRef.current = playingIdx; }, [playingIdx]);
+
+  const stopWeb = useCallback(() => {
+    webSourcesRef.current.forEach(s => {
+      try { s.src.stop(); } catch { /* ignore */ }
+      try { s.src.disconnect(); } catch { /* ignore */ }
+    });
+    webSourcesRef.current = [];
+    webStartAtRef.current = null;
+    webPausedAtRef.current = 0;
+    webCurrentBufferDurRef.current = 0;
+  }, []);
+
+  const ensureAudioCtx = useCallback(async (): Promise<AudioContext> => {
+    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+    const ctx = audioCtxRef.current;
+    if (ctx.state !== "running") {
+      try { await ctx.resume(); } catch { /* ignore */ }
+    }
+    return ctx;
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -214,45 +252,197 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
   }, [surah.id]);
 
   const stopAudio = useCallback(() => {
+    stopWeb();
+    webUsingRef.current = false;
+    if (audioCtxRef.current) {
+      audioCtxRef.current.suspend().catch(() => {});
+    }
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
+    if (preloadRef.current) { preloadRef.current.pause(); }
     setPlayingIdx(null);
     setIsPlaying(false);
-  }, []);
+  }, [stopWeb]);
+
+  const urlForIdx = useCallback((idx: number): string | null => {
+    const ayah = ayahs[idx];
+    if (!ayah) return null;
+    return cdnUrl(surah.id, ayah.numberInSurah, reciterId);
+  }, [ayahs, surah.id, reciterId]);
+
+  const decodeIdx = useCallback(async (idx: number): Promise<AudioBuffer | null> => {
+    if (idx < 0 || idx >= ayahs.length) return null;
+    const cached = webDecodeCacheRef.current.get(idx);
+    if (cached) return cached;
+    const ayah = ayahs[idx];
+    if (!ayah) return null;
+    const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
+    const url = await getCachedAudioUrl(source);
+    try {
+      const ctx = await ensureAudioCtx();
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const arr = await r.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr.slice(0));
+      webDecodeCacheRef.current.set(idx, buf);
+      return buf;
+    } catch {
+      return null;
+    }
+  }, [ayahs.length, ensureAudioCtx, surah.id, reciterId]);
+
+  const preloadIdx = useCallback((idx: number) => {
+    const ayah = ayahs[idx];
+    if (!ayah) return;
+    if (preloadedIdxRef.current === idx) return;
+    const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
+    if (isNativeApp()) {
+      void preloadQuranVerseNative(source);
+    } else {
+      void preloadQuranVerseFast(source);
+    }
+    preloadedIdxRef.current = idx;
+  }, [ayahs, surah.id, reciterId]);
 
   const playIdx = useCallback(async (idx: number) => {
     const ayah = ayahs[idx];
     if (!ayah) return;
-    if (!audioRef.current) audioRef.current = new Audio();
-    const audio = audioRef.current;
-    audio.pause();
-    const url = cdnUrl(surah.id, ayah.numberInSurah, reciterId);
-    if (isNativeApp()) {
-      await setAudioSrc(audio, url);
-    } else {
-      audio.src = url;
-    }
-    audio.load();
-    audio.play().catch(() => {});
-    setPlayingIdx(idx);
-    setIsPlaying(true);
-    spanRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    audio.onended = () => {
-      const next = idx + 1;
-      if (next < ayahs.length) playIdx(next);
-      else { setPlayingIdx(null); setIsPlaying(false); }
+
+    const tryWeb = async () => {
+      const OVERLAP_SEC = 0.015;
+      const needNext = idx + 1 < ayahs.length;
+      const [buf, nextBuf] = await Promise.all([
+        decodeIdx(idx),
+        needNext ? decodeIdx(idx + 1) : Promise.resolve(null),
+      ]);
+      if (!buf) throw new Error("decode failed");
+      if (needNext && !nextBuf) throw new Error("next decode failed");
+      if (idx + 2 < ayahs.length) void decodeIdx(idx + 2);
+      const ctx = await ensureAudioCtx();
+      stopWeb();
+      webUsingRef.current = true;
+
+      const now = ctx.currentTime;
+      const startAt = now + 0.015;
+      webStartAtRef.current = startAt;
+      webPausedAtRef.current = 0;
+      webCurrentBufferDurRef.current = buf.duration;
+
+      const src1 = ctx.createBufferSource();
+      src1.buffer = buf;
+      src1.connect(ctx.destination);
+      webSourcesRef.current.push({ idx, src: src1, startAt, dur: buf.duration });
+      src1.start(startAt);
+
+      setPlayingIdx(idx);
+      setIsPlaying(true);
+      spanRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      if (nextBuf) {
+        const nextStart = startAt + Math.max(0, buf.duration - OVERLAP_SEC);
+        const src2 = ctx.createBufferSource();
+        src2.buffer = nextBuf;
+        src2.connect(ctx.destination);
+        webSourcesRef.current.push({ idx: idx + 1, src: src2, startAt: nextStart, dur: nextBuf.duration });
+        src2.start(nextStart);
+
+        // Preload next verse
+        if (idx + 2 < ayahs.length) preloadIdx(idx + 2);
+
+        window.setTimeout(() => {
+          if (!isPlayingRef.current) return;
+          setPlayingIdx(idx + 1);
+          webStartAtRef.current = nextStart;
+          webPausedAtRef.current = 0;
+          spanRefs.current[idx + 1]?.scrollIntoView({ behavior: "smooth", block: "center" });
+          webCurrentBufferDurRef.current = nextBuf.duration;
+          if (idx + 2 < ayahs.length) void decodeIdx(idx + 2);
+        }, Math.max(0, (nextStart - ctx.currentTime) * 1000));
+      } else {
+        // No next buffer, but still preload it
+        if (idx + 1 < ayahs.length) preloadIdx(idx + 1);
+      }
+
+      src1.onended = () => {
+        const next = idx + 1;
+        if (next < ayahs.length) {
+          playIdx(next);
+        } else {
+          setPlayingIdx(null);
+          setIsPlaying(false);
+        }
+      };
     };
-  }, [ayahs, surah.id, reciterId]);
+
+    const tryHtmlAudio = async () => {
+      webUsingRef.current = false;
+      stopWeb();
+
+      if (preloadedIdxRef.current === idx && preloadRef.current?.src) {
+        if (audioRef.current) { audioRef.current.pause(); audioRef.current.onended = null; }
+        const pre = preloadRef.current;
+        pre.currentTime = 0;
+        pre.volume = 1;
+        audioRef.current = pre;
+        preloadRef.current = new Audio();
+        preloadedIdxRef.current = null;
+        void audioRef.current.play().catch(() => {});
+      } else {
+        if (!audioRef.current) audioRef.current = new Audio();
+        const audio = audioRef.current;
+        audio.pause();
+        let url = urlForIdx(idx);
+        if (!url) return;
+        audio.volume = 1;
+        if (isNativeApp()) {
+          const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
+          url = await getCachedAudioUrlNative(source);
+        }
+        audio.src = url;
+        audio.load();
+        audio.play().catch(() => {});
+      }
+
+      setPlayingIdx(idx);
+      setIsPlaying(true);
+      spanRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const audio = audioRef.current;
+      const nextPreload = idx + 1;
+      if (nextPreload < ayahs.length) preloadIdx(nextPreload);
+      if (!audio) return;
+      audio.onended = () => {
+        const next = idx + 1;
+        if (next < ayahs.length) playIdx(next);
+        else { setPlayingIdx(null); setIsPlaying(false); }
+      };
+
+    };
+
+    if (isNativeApp()) {
+      await tryWeb().catch(tryHtmlAudio);
+    } else {
+      await tryHtmlAudio();
+    }
+  }, [ayahs, decodeIdx, ensureAudioCtx, preloadIdx, stopWeb, surah.id, urlForIdx]);
 
   const handleAyahTap = (idx: number) => {
     if (playingIdx === idx && isPlaying) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
+      if (webUsingRef.current && audioCtxRef.current) {
+        audioCtxRef.current.suspend().catch(() => {});
+        setIsPlaying(false);
+      } else {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      }
     } else {
       playIdx(idx);
     }
   };
 
-  useEffect(() => () => stopAudio(), [stopAudio]);
+  useEffect(() => () => {
+    stopAudio();
+    preloadRef.current?.pause();
+    audioCtxRef.current?.close().catch(() => {});
+  }, [stopAudio]);
 
   return (
     <div className="flex flex-col h-full">
@@ -279,7 +469,30 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
       {/* Controls bar */}
       <div className="shrink-0 px-4 py-2 flex items-center gap-2 border-b" style={{ borderColor: "rgba(200,168,75,0.08)" }}>
         <button
-          onClick={() => isPlaying ? (audioRef.current?.pause(), setIsPlaying(false)) : (playingIdx !== null ? (audioRef.current?.play().catch(() => {}), setIsPlaying(true)) : playIdx(0))}
+          onClick={() => {
+            if (webUsingRef.current && audioCtxRef.current) {
+              if (isPlaying) {
+                audioCtxRef.current.suspend().catch(() => {});
+                setIsPlaying(false);
+              } else {
+                audioCtxRef.current.resume().catch(() => {});
+                setIsPlaying(true);
+              }
+              return;
+            }
+
+            if (isPlaying) {
+              audioRef.current?.pause();
+              setIsPlaying(false);
+            } else {
+              if (playingIdx !== null) {
+                audioRef.current?.play().catch(() => {});
+                setIsPlaying(true);
+              } else {
+                playIdx(0);
+              }
+            }
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold"
           style={{ background: "rgba(200,168,75,0.12)", border: "1px solid rgba(200,168,75,0.25)", color: "#c8a84b" }}
         >

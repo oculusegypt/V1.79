@@ -6,6 +6,7 @@ import { CheckSquare, Square, Trash2, ListChecks, Loader2, Bot } from "lucide-re
 import { PageHeader } from "@/components/PageHeader";
 import { cn } from "@/lib/utils";
 import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
 
 interface HadiTaskItem {
   id: number;
@@ -27,7 +28,7 @@ function useHadiTasks() {
   return useQuery<HadiTaskGroup[]>({
     queryKey: ["/api/hadi-tasks", sessionId],
     queryFn: async () => {
-      const res = await fetch(`/api/hadi-tasks?sessionId=${encodeURIComponent(sessionId)}`);
+      const res = await fetch(apiUrl(`/api/hadi-tasks?sessionId=${encodeURIComponent(sessionId)}`));
       if (!res.ok) throw new Error("Failed to fetch tasks");
       return res.json();
     },
@@ -40,7 +41,7 @@ function useToggleTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const res = await fetch(`/api/hadi-tasks/items/${id}`, {
+      const res = await fetch(apiUrl(`/api/hadi-tasks/items/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, completed }),
@@ -75,7 +76,7 @@ function useDeleteGroup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (groupId: number) => {
-      const res = await fetch(`/api/hadi-tasks/groups/${groupId}`, {
+      const res = await fetch(apiUrl(`/api/hadi-tasks/groups/${groupId}`), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),

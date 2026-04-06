@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.aiservx.tawbah",
-  appName: "دليل التوبة النصوح",
+  appName: "التوبة النصوح",
 
   webDir: "dist/public",
 
@@ -17,6 +17,16 @@ const config: CapacitorConfig = {
       "everyayah.com",
       "api.aladhan.com",
       "quran.com",
+      "radiojar.com",
+      "*.radiojar.com",
+      "stream.radiojar.com",
+      "zayedquran.gov.ae",
+      "radio.alaatv.com",
+      "mp3quran.net",
+      "live.mp3quran.net",
+      "backup.qurango.net",
+      "qurango.net",
+      "v-177--hadybash781.replit.app",
       "*.replit.app",
       "*.replit.dev",
     ],
@@ -31,18 +41,24 @@ const config: CapacitorConfig = {
   },
 
   plugins: {
+    SplashScreen: {
+      launchShowDuration: 0,
+      backgroundColor: "#0B1E1B",
+      androidSplashResourceName: "splash",
+      androidScaleType: "CENTER_CROP",
+      showSpinner: false,
+    },
+
+    StatusBar: {
+      style: "LIGHT",
+      backgroundColor: "#0B1E1B",
+      overlay: false,
+    },
+
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
     },
-
-    LocalNotifications: {
-      smallIcon: "ic_launcher_foreground",
-      iconColor: "#2d7a4f",
-      sound: "takbeer",
-    },
-
-    Camera: {},
+    WebView: {},
   },
 };
-
-export default config;
+export  default config;

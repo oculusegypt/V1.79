@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "wouter";
 import { GripVertical } from "lucide-react";
 import { motion } from "framer-motion";
@@ -7,7 +8,7 @@ import { isGridItem, GRID_META } from "./types";
 import { renderSection } from "./list-sections";
 import type { SectionId, ListId } from "./types";
 
-export function SortableUnifiedItem({
+export const SortableUnifiedItem = memo(function SortableUnifiedItem({
   id,
   editMode,
 }: {
@@ -100,4 +101,6 @@ export function SortableUnifiedItem({
       </div>
     </div>
   );
-}
+});
+
+SortableUnifiedItem.displayName = "SortableUnifiedItem";

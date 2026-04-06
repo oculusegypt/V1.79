@@ -141,6 +141,10 @@ export function MoodSelector() {
 
   const handleSelect = (mood: Mood) => {
     setSelected(mood.id);
+    try {
+      localStorage.setItem("tawbah_mood", mood.id);
+      localStorage.setItem("tawbah_last_activity", `mood:${mood.id}`);
+    } catch {}
     setTimeout(() => {
       navigate(mood.href);
     }, 280);

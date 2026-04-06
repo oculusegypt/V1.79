@@ -1,22 +1,27 @@
 import { useState } from "react";
-import { RefreshCcw } from "lucide-react";
+import { Link } from "wouter";
+import { useLocation } from "wouter";
+import { RefreshCcw, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/PageHeader";
-import { useLocation } from "wouter";
 import { getSessionId } from "@/lib/session";
-import { apiUrl } from "@/lib/api-base";
+import { getApiBase, apiUrl } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
 
 export default function Relapse() {
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleRestartJourney = async () => {
-    if (loading) return;
     setLoading(true);
+    setError(null);
+    
     try {
       const sessionId = getSessionId();
-      await fetch(apiUrl(`/api/journey30/relapse?sessionId=${encodeURIComponent(sessionId || "")}`), {
+      
+      // Call API to reset journey and increment relapse count
+      const res = await fetch(apiUrl("/api/journey30/relapse"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -24,11 +29,20 @@ export default function Relapse() {
         },
         body: JSON.stringify({ sessionId }),
       });
-    } catch {
-      // noop
+      
+      if (!res.ok) {
+        // If API fails, still allow going to covenant
+        console.error("Failed to reset journey:", await res.text());
+      }
+      
+      // Navigate to covenant to start fresh
+      setLocation("/covenant");
+    } catch (err) {
+      console.error("Error resetting journey:", err);
+      // Still allow going to covenant even if there's an error
+      setLocation("/covenant");
     } finally {
       setLoading(false);
-      setLocation("/covenant");
     }
   };
 
@@ -70,15 +84,27 @@ export default function Relapse() {
           </ol>
         </div>
 
+        {error && (
+          <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+        )}
+
         <div className="mt-10">
-          <button
-            type="button"
+          <button 
             onClick={handleRestartJourney}
             disabled={loading}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <RefreshCcw size={18} />
-            <span>{loading ? "جاري إعادة تفعيل الرحلة..." : "تجديد العهد والبدء من جديد"}</span>
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <span>جاري إعادة تفعيل الرحلة...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCcw size={18} />
+                <span>إعادة تفعيل الرحلة والبدء من جديد</span>
+              </>
+            )}
           </button>
         </div>
       </motion.div>

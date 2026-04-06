@@ -16,12 +16,28 @@ export type { ServerResponseSegment } from "./types.js";
 
 const router: IRouter = Router();
 
+function hasTextAiCredentials(): boolean {
+  return Boolean(
+    (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL &&
+      process.env.AI_INTEGRATIONS_OPENAI_API_KEY) ||
+      process.env.OPENAI_API_KEY,
+  );
+}
+
 // ══════════════════════════════════════════
 // ROUTES
 // ══════════════════════════════════════════
 
 router.post("/zakiy/message", async (req, res) => {
   try {
+    if (!hasTextAiCredentials()) {
+      res.status(503).json({
+        error: "Zakiy AI is not configured on the server",
+        configured: false,
+      });
+      return;
+    }
+
     const { message, history = [], sessionId = "", voiceProfile } = req.body as {
       message: string;
       history: { role: "user" | "assistant"; content: string }[];

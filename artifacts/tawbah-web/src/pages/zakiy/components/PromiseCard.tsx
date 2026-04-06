@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Handshake, CheckSquare } from "lucide-react";
-import { getApiBase } from "@/lib/api-base";
+import { aiUrl } from "@/lib/api-base";
 import type { MessageSegment } from "../types";
 
 export function PromiseCard({ seg, sessionId }: { seg: MessageSegment; sessionId: string }) {
@@ -10,7 +10,7 @@ export function PromiseCard({ seg, sessionId }: { seg: MessageSegment; sessionId
   async function handlePromise() {
     setState("loading");
     try {
-      await fetch(`${getApiBase()}/zakiy/promise`, {
+      await fetch(aiUrl("/api/zakiy/promise"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, promiseText: seg.text }),

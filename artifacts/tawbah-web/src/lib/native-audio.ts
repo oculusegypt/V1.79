@@ -15,6 +15,15 @@ export async function setAudioSrc(audio: HTMLAudioElement, url: string): Promise
     return;
   }
 
+  // Prefer direct streaming on native WebView. Fetching as Blob can lead to silent playback
+  // or memory pressure on some Android devices.
+  try {
+    (audio as unknown as { crossOrigin?: string }).crossOrigin = "anonymous";
+  } catch {}
+
+  audio.src = url;
+  return;
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);

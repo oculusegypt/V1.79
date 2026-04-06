@@ -51,13 +51,13 @@ export function StandardHeader({
   return (
     <div
       className={cn(
-        "sticky top-0 z-30 transition-all duration-200",
+        "sticky top-0 z-30 transition-all duration-200 pt-0",
         scrolled
           ? "bg-background/95 backdrop-blur-md shadow-sm shadow-black/5 border-b border-border/60"
           : "bg-background/80 backdrop-blur-sm border-b border-border/30",
         className,
       )}
-      style={{ height: scrolled ? 52 : 58 }}
+      style={{ height: scrolled ? 52 : 56 }}
     >
       <div className="flex items-center h-full px-2 relative">
         {showBack && (

@@ -1,4 +1,6 @@
-const BASE = "/api/admin";
+import { apiUrl } from "@/lib/api-base";
+
+const BASE = apiUrl("/api/admin");
 
 function getToken(): string {
   return localStorage.getItem("admin_token") || "";

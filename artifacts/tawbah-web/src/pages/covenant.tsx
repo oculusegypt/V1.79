@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, HandHeart } from "lucide-react";
 import { useAppCreateCovenant } from "@/hooks/use-app-data";
+import { useAuth } from "@/context/AuthContext";
 import { recordEvent } from "@/components/live-stats";
 
 function CovenantSeal() {
@@ -38,6 +40,7 @@ function CovenantSeal() {
 export default function Covenant() {
   const [, setLocation] = useLocation();
   const createCovenant = useAppCreateCovenant();
+  const { user } = useAuth();
 
   const handleSign = () => {
     createCovenant.mutate({ sinCategory: "other" }, {
@@ -51,6 +54,13 @@ export default function Covenant() {
   const handleBack = () => {
     window.history.length > 1 ? window.history.back() : setLocation("/");
   };
+
+  // Redirect to login if not authenticated, save pending redirect
+  useEffect(() => {
+    if (!user) {
+      sessionStorage.setItem("pending_redirect", "/covenant");
+    }
+  }, [user]);
 
   return (
     <div className="flex-1 flex flex-col bg-background" dir="rtl">

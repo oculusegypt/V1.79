@@ -11,9 +11,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { useQuery } from "@tanstack/react-query";
 import { useAppUserProgress, useAppDhikrCount, useAppHabits } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
-import { getApiBase } from "@/lib/api-base";
+import { apiUrl } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
 import { BadgesSection } from "@/components/badges";
+import { useSettings } from "@/context/SettingsContext";
 
 interface DayRecord {
   date: string;
@@ -396,7 +397,7 @@ function useJourney30Data() {
     queryKey: ["/api/journey30-progress"],
     queryFn: async () => {
       const sessionId = getSessionId();
-      const res = await fetch(`${getApiBase()}/journey30?sessionId=${encodeURIComponent(sessionId)}`, { headers: { ...getAuthHeader() } });
+      const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
       if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
       return res.json() as Promise<{ completedCount: number; currentDay: number; streakDays: number }>;
     },
@@ -438,8 +439,8 @@ export default function ProgressChart() {
       last7.map(async (date) => {
         try {
           const [habRes, dhRes] = await Promise.all([
-            fetch(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${date}`),
-            fetch(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${date}`),
+            fetch(apiUrl(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${date}`)),
+            fetch(apiUrl(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${date}`)),
           ]);
           const habData = habRes.ok ? await habRes.json() : [];
           const dhData = dhRes.ok ? await dhRes.json() : { istighfar: 0 };

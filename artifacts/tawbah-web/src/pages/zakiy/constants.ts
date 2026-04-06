@@ -52,7 +52,7 @@ export const VOICE_PROFILES = [
 ];
 
 export const VOICE_PROFILE_STORAGE_KEY = "zakiy_voice_profile";
-export const DEFAULT_VOICE_PROFILE_ID = "wise-friend";
+export const DEFAULT_VOICE_PROFILE_ID = "young-guide";
 
 export const ALL_STARTER_QUESTIONS: Array<{ q: string; icon: string }> = [
   { q: "إزاي أتوب توبة صادقة؟", icon: "🌿" },
@@ -110,3 +110,45 @@ export const TONE_STYLES: Array<{ keywords: string[]; emoji: string; className: 
 ];
 
 export const SURAH_LENGTHS = [7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
+
+// Time-aware greeting messages
+export function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  
+  if (hour >= 3 && hour < 7) {
+    return "أهلاً يا صاحبي! 🌙 جوه الليل، ربنا معاك. أي حاجة في قلبك؟";
+  } else if (hour >= 7 && hour < 12) {
+    return "أهلاً يا صاحبي! 🌅 الصبح جميل، ربنا يبارك يومك. إيش عندك؟";
+  } else if (hour >= 12 && hour < 15) {
+    return "أهلاً! ☀️ وقت الظهيرة، ربنا يسقينا من خيري. إيش محتاج؟";
+  } else if (hour >= 15 && hour < 18) {
+    return "أهلاً يا صاحبي! 🌤️ العصر جاي، وقت الاستجابة. أنا هنا.";
+  } else if (hour >= 18 && hour < 20) {
+    return "أهلاً! 🌇 وقت المغرب، أجمل أوقات اليوم. إيش عندك؟";
+  } else if (hour >= 20 && hour < 22) {
+    return "أهلاً! 🌆 العشاء، وقت الدعاء. أنا أسمعك.";
+  } else {
+    return "أهلاً يا صاحبي! 🌿 أنا الزكي — مش بوت رسمي، أنا صاحبك اللي بيعرف دينه.\n\nابعت صوتك أو اكتب — أنا هنا أسمعك بكل قلبي.\nوالكلام اللي بيننا يفضل بيننا.";
+  }
+}
+
+// Streak celebration messages
+export function getStreakMessage(days: number): string | null {
+  if (days === 7) {
+    return "🎉 أسبوع كامل! والله أنا فخور بك.继续保持!";
+  } else if (days === 14) {
+    return "🌟 أسبوعين! أنت في الطريق الصحيح. الله يثبتك.";
+  } else if (days === 30) {
+    return "👑 شهر كامل! هذا إنجاز كبير. ما شاء الله تبارك الله!";
+  } else if (days === 60) {
+    return "🏆 شهران! أنت بطل حقيقي.继续保持!";
+  } else if (days === 90) {
+    return "💎 ثلاثة أشهر! والله أنت غيرت حياتك. ما شاء الله!";
+  }
+  return null;
+}
+
+// Post-SOS follow-up messages
+export function getPostSosMessage(): string {
+  return "أنا هنا معاك، ما تخاف تكلمني. أي لحظة ضعفت، رجعلنا.";
+}

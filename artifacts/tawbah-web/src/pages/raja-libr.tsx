@@ -22,9 +22,7 @@ function toGlobalAyah(surah: number, ayah: number): number {
 
 function reciterAudioUrl(surah: number, ayah: number, reciterId: string): string {
   const globalAyah = toGlobalAyah(surah, ayah);
-  return isNativeApp()
-    ? `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyah}.mp3`
-    : `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
+  return `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
 }
 
 const QURAN_VERSES: { id: number; arabic: string; source: string; tag: string; note: string; category: VerseCategory; surah: number; ayah: number }[] = [
@@ -228,9 +226,10 @@ function VerseAudioPlayer({ surah, ayah }: { surah: number; ayah: number }) {
         if (isNativeApp()) {
           await setAudioSrc(audio, url);
         } else {
-          audio.src = url;
+          void setAudioSrc(audio, url);
         }
-        await audio.play();
+        audio.load();
+        void audio.play().catch(() => {});
         setIsPlaying(true);
       } catch (e) {
         console.error("[RajaaLib] Audio error:", e);
@@ -244,7 +243,16 @@ function VerseAudioPlayer({ surah, ayah }: { surah: number; ayah: number }) {
 
   return (
     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-      <audio ref={audioRef} preload="none" crossOrigin="anonymous" onEnded={stopSelf} />
+      <audio 
+        ref={audioRef} 
+        preload="none" 
+        onEnded={stopSelf}
+        onError={(e) => {
+          console.error("[RajaaLib] Audio element error:", audioRef.current?.error);
+          setIsPlaying(false);
+          if (activeGlobalAudio?.element === audioRef.current) activeGlobalAudio = null;
+        }}
+      />
       <button
         onClick={toggle}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${
@@ -272,6 +280,57 @@ export default function RajaaLibrary() {
   const [expandedVerse, setExpandedVerse] = useState<number | null>(null);
   const [expandedHadith, setExpandedHadith] = useState<number | null>(null);
   const [expandedStory, setExpandedStory] = useState<number | null>(null);
+  const [playingVerseId, setPlayingVerseId] = useState<number | null>(null);
+  const verseAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const stopVerseAudio = useCallback(() => {
+    const a = verseAudioRef.current;
+    if (!a) return;
+    a.pause();
+    a.currentTime = 0;
+    setPlayingVerseId(null);
+    if (activeGlobalAudio?.element === a) activeGlobalAudio = null;
+  }, []);
+
+  const toggleVerseAudio = useCallback(async (surah: number, ayah: number, verseId: number) => {
+    if (!verseAudioRef.current) verseAudioRef.current = new Audio();
+    const a = verseAudioRef.current;
+    if (!a) return;
+
+    if (playingVerseId === verseId && !a.paused) {
+      a.pause();
+      setPlayingVerseId(null);
+      if (activeGlobalAudio?.element === a) activeGlobalAudio = null;
+      return;
+    }
+
+    if (activeGlobalAudio && activeGlobalAudio.element !== a) activeGlobalAudio.stop();
+    activeGlobalAudio = { element: a, stop: stopVerseAudio };
+
+    const url = reciterAudioUrl(surah, ayah, quranReciterId);
+    try {
+      if (isNativeApp()) {
+        await setAudioSrc(a, url);
+      } else {
+        void setAudioSrc(a, url);
+      }
+      a.load();
+      void a.play().catch(() => {});
+      setPlayingVerseId(verseId);
+    } catch (e) {
+      console.error("[RajaaLib] Audio error:", e);
+      if (activeGlobalAudio?.element === a) activeGlobalAudio = null;
+      setPlayingVerseId(null);
+    }
+  }, [playingVerseId, quranReciterId, stopVerseAudio]);
+
+  useEffect(() => () => {
+    stopVerseAudio();
+  }, [stopVerseAudio]);
+
+  useEffect(() => {
+    stopVerseAudio();
+  }, [quranReciterId, stopVerseAudio]);
 
   const reciterName = QURAN_RECITERS.find(r => r.id === quranReciterId)?.name || "القارئ";
 
@@ -411,6 +470,7 @@ export default function RajaaLibrary() {
                           className="text-[18px] leading-[1.9] text-foreground font-medium"
                           style={{ fontFamily: "'Amiri Quran', serif" }}
                           dir="rtl"
+                          onClick={() => void toggleVerseAudio(verse.surah, verse.ayah, verse.id)}
                         >
                           {verse.arabic}
                         </p>

@@ -1,4 +1,6 @@
-export function ZakiyAvatar({ pulse = false }: { pulse?: boolean }) {
+export function ZakiyAvatar({ pulse = false, gender = "male" }: { pulse?: boolean; gender?: "male" | "female" }) {
+  const avatarSrc = gender === "female" ? "/images/7686493.png" : "/images/zakiy-avatar.png";
+  
   return (
     <div className="relative flex-shrink-0">
       <div
@@ -10,10 +12,10 @@ export function ZakiyAvatar({ pulse = false }: { pulse?: boolean }) {
         }}
       >
         <img
-          src="/images/zakiy-avatar.png"
+          src={avatarSrc}
           alt="زكي"
           className="w-full h-full object-cover"
-          style={{ background: "#1a3a2a" }}
+          style={{ background: gender === "female" ? "#fdf4ff" : "#1a3a2a" }}
         />
       </div>
 

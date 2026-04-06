@@ -1,4 +1,4 @@
-import { isNativeApp } from "@/lib/api-base";
+import { getApiBase, isNativeApp } from "@/lib/api-base";
 import { SURAH_LENGTHS } from "./constants";
 
 export function toGlobalAyah(surah: number, ayah: number): number {
@@ -9,8 +9,7 @@ export function toGlobalAyah(surah: number, ayah: number): number {
 
 export function reciterAudioUrl(surah: number, ayah: number, reciterId: string): string {
   const globalAyah = toGlobalAyah(surah, ayah);
-  void isNativeApp;
-  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyah}.mp3`;
+  return `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
 }
 
 export function getSurahName(num: number): string {

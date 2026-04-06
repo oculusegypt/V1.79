@@ -132,6 +132,8 @@ export function Layout({ children }: { children: ReactNode }) {
       <Link
         href={href}
         className="relative flex flex-col items-center justify-center flex-1 h-full gap-1 tap-highlight-transparent"
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
       >
         {isActive && (
           <motion.div
@@ -144,6 +146,7 @@ export function Layout({ children }: { children: ReactNode }) {
           size={22}
           strokeWidth={isActive ? 2.5 : 1.8}
           className={cn("transition-colors duration-200", isActive ? "text-primary" : "text-muted-foreground")}
+          aria-hidden="true"
         />
         <span className={cn(
           "text-[10px] font-medium transition-colors leading-none",
@@ -163,12 +166,9 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none -z-10" />
 
       <main className="flex-1 flex flex-col relative z-0">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           <motion.div
             key={location}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.22, ease: "easeOut" } }}
-            exit={{ opacity: 0, transition: { duration: 0.06 } }}
             className="flex-1 flex flex-col"
           >
             {children}
@@ -188,7 +188,7 @@ export function Layout({ children }: { children: ReactNode }) {
             whileTap={{ scale: 0.88 }}
             onClick={scrollToTop}
             className="fixed z-50 p-3 rounded-full bg-card border border-border shadow-lg shadow-black/10 hover:border-primary/40 hover:text-primary text-muted-foreground transition-colors"
-            style={{ bottom: "96px", right: "16px" }}
+            style={{ bottom: "88px", right: "16px" }}
             aria-label="الصعود للأعلى"
             title="الصعود للأعلى"
           >
@@ -199,98 +199,21 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {!isSos && !isZakiy && (
         <>
-          {/* Help button — moved to LEFT side, raised higher to clear chat controls */}
-          <div className="fixed bottom-[110px] left-4 z-50 flex flex-col items-center gap-2">
-            <AnimatePresence>
-              {helpOpen && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.5, y: 20 }}
-                    transition={{ delay: 0.05 }}
-                  >
-                    <Link
-                      href="/dhikr"
-                      onClick={() => setHelpOpen(false)}
-                      className="flex items-center gap-2 px-3.5 py-2.5 bg-primary text-primary-foreground rounded-full shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all text-xs font-bold whitespace-nowrap"
-                    >
-                      <CircleDot size={16} strokeWidth={2} />
-                      <span>الذكر</span>
-                    </Link>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.5, y: 20 }}
-                    transition={{ delay: 0 }}
-                  >
-                    <Link
-                      href="/sos"
-                      onClick={() => setHelpOpen(false)}
-                      className="flex items-center gap-2 px-3.5 py-2.5 bg-destructive text-destructive-foreground rounded-full shadow-lg shadow-destructive/30 hover:scale-105 active:scale-95 transition-all text-xs font-bold whitespace-nowrap"
-                    >
-                      <ShieldAlert size={16} strokeWidth={2.5} />
-                      <span>طوارئ</span>
-                    </Link>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setHelpOpen(v => !v)}
-              className={cn(
-                "p-3.5 rounded-full shadow-lg transition-all",
-                helpOpen
-                  ? "bg-muted text-muted-foreground shadow-black/10"
-                  : "bg-card border border-border text-muted-foreground shadow-black/10 hover:text-primary hover:border-primary/40"
-              )}
-              title={lang === "ar" ? "مساعدة" : "Help"}
-            >
-              <AnimatePresence mode="wait">
-                {helpOpen ? (
-                  <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                    <X size={22} strokeWidth={2.5} />
-                  </motion.span>
-                ) : (
-                  <motion.span key="help" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                    <HelpCircle size={22} strokeWidth={2} />
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
-
-          {/* Backdrop */}
-          <AnimatePresence>
-            {helpOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setHelpOpen(false)}
-                className="fixed inset-0 z-40"
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Floating Bottom Navigation Bar */}
-          <nav className="fixed bottom-3 inset-x-0 z-40 max-w-md mx-auto px-4">
+          {/* Floating Bottom Navigation Bar - Full Width at Bottom */}
+          <nav className="fixed bottom-0 inset-x-0 z-40 px-0">
             <div className="relative">
               {/* Floating glass pill */}
               <div
-                className="relative rounded-[28px] overflow-hidden bg-card/88 backdrop-blur-2xl"
+                className="relative overflow-hidden bg-card/88 backdrop-blur-2xl"
                 style={{
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.12)",
+                  boxShadow: "0 -4px 24px rgba(0,0,0,0.12), 0 -2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.12)",
                   border: "1px solid hsl(var(--border)/0.6)",
+                  borderBottom: "none",
                 }}
               >
                 {/* Subtle top shine */}
                 <div
-                  className="absolute top-0 inset-x-0 h-[45%] pointer-events-none rounded-t-[28px]"
+                  className="absolute top-0 inset-x-0 h-[45%] pointer-events-none"
                   style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)" }}
                 />
 
@@ -305,11 +228,11 @@ export function Layout({ children }: { children: ReactNode }) {
                     href={zakiHref}
                     className="relative flex flex-col items-center justify-center flex-none h-full tap-highlight-transparent"
                     style={{ width: "22%" }}
-                    aria-label="زكي"
+                    aria-label="زكي - مساعدك الروحي"
                     title="زكي"
                   >
                     <motion.div whileTap={{ scale: 0.92 }} className="relative">
-                      <div className="scale-[0.88]">
+                      <div className="scale-[0.88]" aria-hidden="true">
                         <ZakiyNavOrb isActive={isZakiActive} />
                       </div>
                     </motion.div>

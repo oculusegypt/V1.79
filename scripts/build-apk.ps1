@@ -2,7 +2,8 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio3\jbr"
 $env:PATH = "$env:JAVA_HOME\bin;" + $env:PATH
 java -version
 Write-Host "---"
-$webDir = "C:\Users\sd\Documents\GitHub\v177\artifacts\tawbah-web"
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$webDir = Join-Path $repoRoot "artifacts\tawbah-web"
 
 Write-Host "Building web assets..."
 Push-Location $webDir
@@ -22,5 +23,8 @@ Pop-Location
 
 Write-Host "---"
 Push-Location "$webDir\android"
+Write-Host "Cleaning Android build..."
+.\gradlew.bat clean
+Write-Host "Assembling debug APK..."
 .\gradlew.bat assembleDebug
 Pop-Location

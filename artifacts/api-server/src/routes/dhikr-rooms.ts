@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const ROOM_TYPES = ["istighfar", "tasbih", "tahmid", "salawat"];
+const ROOM_TYPES = ["istighfar", "tasbih", "tahmid", "salawat", "tahlil", "takbir"];
 
 async function ensureRoom(roomType: string) {
   const existing = await db.query.dhikrRoomsTable.findFirst({

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { setToken, isAuthenticated } from "@/lib/admin-api";
+import { apiUrl } from "@/lib/api-base";
 import { Lock, Eye, EyeOff } from "lucide-react";
 
 export default function AdminLogin() {
@@ -22,7 +23,7 @@ export default function AdminLogin() {
     setError("");
     setToken(password.trim());
     try {
-      const res = await fetch("/api/admin/stats/overview", {
+      const res = await fetch(apiUrl("/api/admin/stats/overview"), {
         headers: { Authorization: `Bearer ${password.trim()}` },
       });
       if (res.status === 401) {

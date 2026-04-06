@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { BookOpen, BookText, X, Loader2, Play } from "lucide-react";
 import { setAudioSrc } from "@/lib/native-audio";
+import { BookOpen, BookText, X, Loader2, Play } from "lucide-react";
 import { toArabicIndic, toGlobalAyah } from "../utils";
+import { getApiBase } from "@/lib/api-base";
 
 function stripBismillahPrefix(text: string): string {
   const words = text.trim().split(/\s+/);
@@ -88,43 +89,48 @@ function SurahReaderModal({
     if (!preloadRef.current) preloadRef.current = new Audio();
     const pre = preloadRef.current;
     pre.pause(); pre.onended = null;
-    const url = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${toGlobalAyah(surahNumber, ayah.numberInSurah)}.mp3`;
-    void setAudioSrc(pre, url).then(() => pre.load()).catch(() => {});
-    pre.volume = 0;
-    pre.play().then(() => { pre.pause(); pre.currentTime = 0; pre.volume = 1; }).catch(() => { pre.volume = 1; });
+    const url = `${getApiBase()}/audio-proxy/quran/ar.alafasy/${toGlobalAyah(surahNumber, ayah.numberInSurah)}.mp3`;
+    void setAudioSrc(pre, url).then(() => {
+      pre.load();
+      pre.volume = 0;
+      pre.play().then(() => { pre.pause(); pre.currentTime = 0; pre.volume = 1; }).catch(() => { pre.volume = 1; });
+    }).catch(() => {});
+    preloadedIdxRef.current = idx;
   };
 
   const playFromIdx = (idx: number) => {
     if (!displayAyahs[idx]) return;
     const ayah = displayAyahs[idx]!;
-    if (preloadedIdxRef.current === idx && preloadRef.current?.src) {
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.onended = null; }
-      const pre = preloadRef.current;
-      pre.volume = 1; pre.currentTime = 0;
-      audioRef.current = pre;
-      preloadRef.current = new Audio();
-      preloadedIdxRef.current = null;
-    } else {
-      if (!audioRef.current) audioRef.current = new Audio();
-      const audio = audioRef.current;
-      audio.pause(); audio.onended = null;
-      const url = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${toGlobalAyah(surahNumber, ayah.numberInSurah)}.mp3`;
-      void setAudioSrc(audio, url).then(() => audio.load()).catch(() => {});
-    }
+    
+    // Stop any currently playing audio
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.onended = null; }
+    
+    // Always use fresh audio load for reliability
+    if (!audioRef.current) audioRef.current = new Audio();
     const audio = audioRef.current;
-    audio.play().catch(() => {});
+    audio.pause();
+    audio.onended = null;
+    
+    const url = `${getApiBase()}/audio-proxy/quran/ar.alafasy/${toGlobalAyah(surahNumber, ayah.numberInSurah)}.mp3`;
+    
+    void setAudioSrc(audio, url).then(() => {
+      audio.load();
+      // Set up onended handler after audio is loaded
+      audio.onended = () => {
+        const next = idx + 1;
+        if (next < displayAyahs.length) {
+          setCurrentIdx(next);
+          playFromIdxRef.current(next);
+          ayahRefs.current[next]?.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else { setIsPlaying(false); setCurrentIdx(null); }
+      };
+      audio.play().catch(() => {});
+    }).catch(() => {});
+    
     setCurrentIdx(idx); setIsPlaying(true);
     ayahRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" });
     const next = idx + 1;
     if (next < displayAyahs.length) preloadFromIdx(next);
-    audio.onended = () => {
-      const next = idx + 1;
-      if (next < displayAyahs.length) {
-        setCurrentIdx(next);
-        playFromIdxRef.current(next);
-        ayahRefs.current[next]?.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else { setIsPlaying(false); setCurrentIdx(null); }
-    };
   };
 
   useEffect(() => { playFromIdxRef.current = playFromIdx; });

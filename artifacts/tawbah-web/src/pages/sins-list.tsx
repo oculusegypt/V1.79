@@ -4,14 +4,15 @@ import { Link, useLocation, useSearch } from "wouter";
 import {
   ArrowLeft, AlertTriangle, CheckCircle2,
   BookOpen, Scale, Info, Plus, Check, X, Save,
-  Mic, MicOff, Send, Sparkles, RotateCcw,
+  Mic, MicOff, Send, Sparkles, RotateCcw, ChevronDown, Bot, SparklesIcon,
 } from "lucide-react";
 import {
-  SINS, CATEGORY_META, SIN_CATEGORY_ORDER,
-  type Sin, type SinCategory,
+  SINS, CATEGORY_META, SIN_CATEGORY_ORDER, SEVERITY_META,
+  type Sin, type SinCategory, type SinSeverity,
 } from "@/lib/sins-data";
 import { getAuthHeader } from "@/lib/auth-client";
 import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
 
 type FilterType = "all" | SinCategory;
 
@@ -34,23 +35,62 @@ function AiSinDetector({ onDetected }: { onDetected: (ids: string[], explanation
 
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("متصفح التطبيق لا يدعم الميكروفون. جرّب تحديث التطبيق أو استخدم Chrome.");
+        return;
+      }
+      if (typeof (window as any).MediaRecorder === "undefined") {
+        setError("التسجيل الصوتي غير مدعوم على جهازك. جرّب تحديث WebView.");
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = e => { if (e.data.size) chunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
-        const ab = await blob.arrayBuffer();
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
-        await detect(undefined, b64);
+
+      const pickMimeType = () => {
+        const MR = (window as any).MediaRecorder as typeof MediaRecorder | undefined;
+        const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+        for (const t of candidates) {
+          try {
+            if (MR?.isTypeSupported?.(t)) return t;
+          } catch {}
+        }
+        return "";
       };
+
+      const mimeType = pickMimeType();
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        try {
+          const blob = new Blob(chunksRef.current, { type: mr.mimeType });
+          const b64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error("file_reader_failed"));
+            reader.onload = () => {
+              const result = String(reader.result ?? "");
+              const commaIdx = result.indexOf(",");
+              if (commaIdx === -1) return reject(new Error("base64_parse_failed"));
+              resolve(result.slice(commaIdx + 1));
+            };
+            reader.readAsDataURL(blob);
+          });
+
+          await detect(undefined, b64);
+        } catch (e) {
+          console.error("[SinDetector] Voice input failed:", e);
+          setError("ما قدرت أسمعك — تأكد من السماح بالميكروفون.");
+        }
+      };
+
       mr.start();
       mediaRef.current = mr;
       setRecording(true);
       setRecordingSeconds(0);
       timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
-    } catch {
+    } catch (e) {
+      console.error("[SinDetector] getUserMedia/MediaRecorder failed:", e);
       setError("تعذّر الوصول للميكروفون. تأكد من منح الإذن.");
     }
   };
@@ -69,7 +109,7 @@ function AiSinDetector({ onDetected }: { onDetected: (ids: string[], explanation
     setResult(null);
     try {
       const sinsLookup = SINS.map(s => ({ id: s.id, name: s.name, category: s.category, description: s.desc }));
-      const res = await fetch("/api/detect-sins", {
+      const res = await fetch(apiUrl("/api/detect-sins"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description, audioBase64, sinsLookup }),
@@ -92,117 +132,109 @@ function AiSinDetector({ onDetected }: { onDetected: (ids: string[], explanation
   };
 
   return (
-    <div className="mx-5 mb-4 bg-gradient-to-l from-primary/10 to-primary/5 border border-primary/25 rounded-2xl overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-primary/15">
+    <div className="p-4 bg-gradient-to-l from-primary/10 to-primary/5 border border-primary/25 rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2 pb-3 border-b border-primary/15 mb-3">
         <Sparkles size={14} className="text-primary" />
         <p className="text-xs font-bold text-primary flex-1">كشف الذنب بالذكاء الاصطناعي</p>
         <p className="text-[10px] text-muted-foreground">صف حالك أو انطق بها</p>
       </div>
 
-      <div className="p-4">
-        {/* Text input row */}
-        <div className="flex gap-2 items-end">
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="مثال: «أنا أشاهد أشياء محرمة على الإنترنت وأضيّع صلاة الفجر كثيراً»"
-            rows={2}
-            disabled={loading || recording}
-            className="flex-1 bg-background/80 border border-border rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground/50 placeholder:text-[11px] leading-relaxed"
-            dir="rtl"
-          />
-          <div className="flex flex-col gap-1.5">
-            {/* Mic button */}
-            <button
-              onClick={recording ? stopRecording : startRecording}
-              disabled={loading}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                recording
-                  ? "bg-red-500 text-white animate-pulse"
-                  : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
-              }`}
-            >
-              {recording ? <MicOff size={16} /> : <Mic size={16} />}
-            </button>
-            {/* Send button */}
-            <button
-              onClick={() => detect()}
-              disabled={!text.trim() || loading || recording}
-              className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 transition-all hover:bg-primary/90"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Send size={15} />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Recording indicator */}
-        {recording && (
-          <div className="flex items-center gap-2 mt-2 text-red-500 text-xs font-bold">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            يتم التسجيل... {recordingSeconds}ث — اضغط ⏹ للإيقاف
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <p className="text-xs text-red-500 mt-2 font-bold">{error}</p>
-        )}
-
-        {/* Results */}
-        {result && (
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-3">
-            {result.transcription && (
-              <p className="text-[11px] text-muted-foreground mb-2 italic">
-                «{result.transcription}»
-              </p>
-            )}
-            {result.matchedIds.length === 0 ? (
-              <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-400/20 rounded-xl px-3 py-2.5">
-                <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-                <p className="text-xs text-muted-foreground">لم يُعثَر على ذنب مطابق في القائمة. يمكنك اختيار ذنبك يدوياً أدناه.</p>
-              </div>
+      <div className="flex gap-2 items-end">
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="مثال: «أنا أشاهد أشياء محرمة على الإنترنت وأضيّع صلاة الفجر كثيراً»"
+          rows={2}
+          disabled={loading || recording}
+          className="flex-1 bg-background/80 border border-border rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground/50 placeholder:text-[11px] leading-relaxed"
+          dir="rtl"
+        />
+        <div className="flex flex-col gap-1.5">
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            disabled={loading}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+              recording
+                ? "bg-red-500 text-white animate-pulse"
+                : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            }`}
+          >
+            {recording ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
+          <button
+            onClick={() => detect()}
+            disabled={!text.trim() || loading || recording}
+            className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 transition-all hover:bg-primary/90"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              <div>
-                <p className="text-[11px] text-muted-foreground mb-2">
-                  {result.explanation && <span>{result.explanation} — </span>}
-                  وجدتُ {result.matchedIds.length} {result.matchedIds.length === 1 ? "ذنب مطابق" : "ذنوب مطابقة"}:
-                </p>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {result.matchedIds.map(id => {
-                    const sin = SINS.find(s => s.id === id);
-                    if (!sin) return null;
-                    const meta = CATEGORY_META[sin.category];
-                    return (
-                      <span key={id} className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full border ${meta.bg} ${meta.color} ${meta.borderColor}`}>
-                        {sin.icon} {sin.name}
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleConfirm}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-2.5 text-xs font-bold"
-                  >
-                    <Check size={14} />
-                    أضفها لاختياراتي
-                  </button>
-                  <button
-                    onClick={() => setResult(null)}
-                    className="px-3 py-2.5 bg-muted rounded-xl text-xs text-muted-foreground"
-                  >
-                    <RotateCcw size={14} />
-                  </button>
-                </div>
-              </div>
+              <Send size={15} />
             )}
-          </motion.div>
-        )}
+          </button>
+        </div>
       </div>
+
+      {recording && (
+        <div className="flex items-center gap-2 mt-2 text-red-500 text-xs font-bold">
+          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          يتم التسجيل... {recordingSeconds}ث — اضغط ⏹ للإيقاف
+        </div>
+      )}
+
+      {error && (
+        <p className="text-xs text-red-500 mt-2 font-bold">{error}</p>
+      )}
+
+      {result && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-3">
+          {result.transcription && (
+            <p className="text-[11px] text-muted-foreground mb-2 italic">
+              «{result.transcription}»
+            </p>
+          )}
+          {result.matchedIds.length === 0 ? (
+            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-400/20 rounded-xl px-3 py-2.5">
+              <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+              <p className="text-xs text-muted-foreground">لم يُعثَر على ذنب مطابق في القائمة. يمكنك اختيار ذنبك يدوياً أدناه.</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-2">
+                {result.explanation && <span>{result.explanation} — </span>}
+                وجدتُ {result.matchedIds.length} {result.matchedIds.length === 1 ? "ذنب مطابق" : "ذنوب مطابقة"}:
+              </p>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {result.matchedIds.map(id => {
+                  const sin = SINS.find(s => s.id === id);
+                  if (!sin) return null;
+                  const meta = CATEGORY_META[sin.category];
+                  return (
+                    <span key={id} className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full border ${meta.bg} ${meta.color} ${meta.borderColor}`}>
+                      {sin.icon} {sin.name}
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleConfirm}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-xl py-2.5 text-xs font-bold"
+                >
+                  <Check size={14} />
+                  أضفها لاختياراتي
+                </button>
+                <button
+                  onClick={() => setResult(null)}
+                  className="px-3 py-2.5 bg-muted rounded-xl text-xs text-muted-foreground"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -221,7 +253,7 @@ function SinDetailSheet({ sin, onClose }: { sin: Sin; onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm pb-20"
       onClick={onClose}
     >
       <motion.div
@@ -331,6 +363,8 @@ function SinCard({
   sin, selected, onToggle, onDetail,
 }: { sin: Sin; selected: boolean; onToggle: () => void; onDetail: () => void }) {
   const meta = CATEGORY_META[sin.category];
+  const severityMeta = SEVERITY_META[sin.severity];
+
   return (
     <div className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 transition-all ${
       selected ? `${meta.bg} ${meta.borderColor} ring-1 ring-inset ${meta.borderColor}` : "bg-card border-border"
@@ -346,9 +380,14 @@ function SinCard({
       <span className="text-xl shrink-0">{sin.icon}</span>
       <button className="flex-1 min-w-0 text-right" onClick={onDetail}>
         <p className={`font-bold text-sm truncate ${selected ? meta.color : ""}`}>{sin.name}</p>
-        <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border mt-0.5 ${meta.bg} ${meta.color} ${meta.borderColor}`}>
-          {meta.label}
-        </span>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${severityMeta.bg} ${severityMeta.color} ${severityMeta.borderColor}`}>
+            {sin.severity === "kabira" ? "⚠️" : "•"} {severityMeta.label}
+          </span>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${meta.bg} ${meta.color} ${meta.borderColor}`}>
+            {meta.label}
+          </span>
+        </div>
       </button>
       <div className="flex items-center gap-1.5 shrink-0">
         {sin.kaffarahId && <Scale size={12} className="text-red-400" />}
@@ -367,6 +406,8 @@ export default function SinsList() {
   const fromParam = params.get("from"); // "journey" | "account" | null
 
   const [filter, setFilter] = useState<FilterType>("all");
+  const [expandedCategories, setExpandedCategories] = useState<Set<SinCategory>>(new Set(SIN_CATEGORY_ORDER));
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [selectedSin, setSelectedSin] = useState<Sin | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -376,6 +417,15 @@ export default function SinsList() {
     if (fromParam === "journey") return "/journey";
     if (fromParam === "account") return "/account";
     return null; // new journey → go to covenant
+  };
+
+  const toggleCategory = (category: SinCategory) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
   };
 
   const filtered = filter === "all" ? SINS : SINS.filter(s => s.category === filter);
@@ -395,7 +445,7 @@ export default function SinsList() {
     setSaving(true);
     const sins = SINS.filter(s => selectedIds.has(s.id));
     try {
-      const res = await fetch("/api/user/sins", {
+      const res = await fetch(apiUrl("/api/user/sins"), {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
@@ -405,8 +455,8 @@ export default function SinsList() {
       setSaved(true);
       setTimeout(() => {
         const returnPath = getReturnPath();
-        setLocation(returnPath ?? "/covenant");
-      }, 500);
+        window.location.href = returnPath ?? "/covenant";
+      }, 300);
     } catch {
       setSaving(false);
     }
@@ -414,7 +464,7 @@ export default function SinsList() {
 
   const handleSkip = () => {
     const returnPath = getReturnPath();
-    setLocation(returnPath ?? "/covenant");
+    window.location.href = returnPath ?? "/covenant";
   };
 
   const handleAiDetected = (ids: string[], _explanation: string) => {
@@ -449,77 +499,226 @@ export default function SinsList() {
 
   return (
     <div className="flex flex-col flex-1 pb-32">
-      <div className="flex items-center gap-3 px-5 pt-4 mb-1">
-        <button
-          onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/")}
-          className="p-2 -ml-2 rounded-xl hover:bg-muted/50 text-muted-foreground"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-xl font-display font-bold">قائمة الذنوب الذكية</h1>
-          <p className="text-xs text-muted-foreground">اختر ذنبك لتُبنى خطتك عليه</p>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/50 -mx-5 px-5 pt-2 pb-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/")}
+            className="p-2 -ml-2 rounded-xl hover:bg-muted/50 text-muted-foreground"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-lg font-display font-bold">قائمة الذنوب</h1>
+            <p className="text-[10px] text-muted-foreground">اختر ذنبك لتُبنى خطتك عليه</p>
+          </div>
+          {/* Small Zakiy Icon at Top */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setAiModalOpen(true)}
+            className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 flex items-center justify-center"
+          >
+            <Sparkles size={18} className="text-primary-foreground" />
+          </motion.button>
+          <button
+            onClick={handleSkip}
+            className="text-xs font-bold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-xl border border-border hover:border-border/60 transition-colors"
+          >
+            تخطّ
+          </button>
         </div>
-        <button
-          onClick={handleSkip}
-          className="text-xs font-bold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-xl border border-border hover:border-border/60 transition-colors"
-        >
-          تخطّ
-        </button>
+
+        {/* Filter buttons in header */}
+        <div className="mt-3 overflow-x-auto scrollbar-hide -mx-5 px-5">
+          <div className="flex gap-2 min-w-max">
+            {filterBtns.map(f => {
+              const catMeta = f.key === "all" ? null : CATEGORY_META[f.key as SinCategory];
+              const isActive = filter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
+                    isActive && catMeta
+                      ? `${catMeta.bg} ${catMeta.color} ${catMeta.borderColor} shadow-sm`
+                      : isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-card/80 text-muted-foreground border-border hover:border-border/70"
+                  }`}
+                >
+                  {f.label}
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-muted"}`}>
+                    {counts[f.key]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      <AiSinDetector onDetected={handleAiDetected} />
-
-      <div className="mx-5 mt-0 mb-4 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex items-start gap-2">
+      {/* Info message */}
+      <div className="mx-5 mt-3 mb-2 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 flex items-start gap-2">
         <Info size={14} className="text-primary mt-0.5 shrink-0" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          أو حدّد ذنبك يدوياً من القائمة، ثم احفظ لتُحدَّث خطتك تلقائياً.
+          حدّد ذنبك يدوياً من المجموعات أدناه، ثم احفظ لتُحدَّث خطتك تلقائياً.
         </p>
       </div>
 
-      <div className="px-5 mb-4 overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
-          {filterBtns.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border ${
-                filter === f.key
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-card text-muted-foreground border-border"
-              }`}
-            >
-              {f.label}
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${filter === f.key ? "bg-white/20" : "bg-muted"}`}>
-                {counts[f.key]}
-              </span>
-            </button>
-          ))}
-        </div>
+      <div className="px-5 flex flex-col gap-3">
+        {filter === "all" ? (
+          // Grouped by category with accordion
+          SIN_CATEGORY_ORDER.map(category => {
+            const categorySins = SINS.filter(s => s.category === category);
+            const meta = CATEGORY_META[category];
+            const isExpanded = expandedCategories.has(category);
+            const selectedInCategory = categorySins.filter(s => selectedIds.has(s.id)).length;
+
+            return (
+              <motion.div
+                key={category}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="overflow-hidden"
+              >
+                {/* Category Header - Accordion Button */}
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all duration-300 ${
+                    isExpanded
+                      ? `${meta.bg} ${meta.borderColor} shadow-sm`
+                      : "bg-card border-border hover:border-border/70"
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl ${meta.bg} flex items-center justify-center text-xl`}>
+                    {meta.icon}
+                  </div>
+                  <div className="flex-1 text-right">
+                    <p className={`font-bold text-sm ${isExpanded ? meta.color : ""}`}>{meta.groupLabel}</p>
+                    <p className="text-[10px] text-muted-foreground">{categorySins.length} ذنب</p>
+                  </div>
+                  {selectedInCategory > 0 && (
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${meta.bg} ${meta.color}`}>
+                      {selectedInCategory} مختار
+                    </span>
+                  )}
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={`p-1.5 rounded-lg ${isExpanded ? meta.bg : "bg-muted"}`}
+                  >
+                    <ChevronDown size={16} className={isExpanded ? meta.color : "text-muted-foreground"} />
+                  </motion.div>
+                </button>
+
+                {/* Accordion Content */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-3 pb-2 flex flex-col gap-2">
+                        {categorySins.map((sin, i) => (
+                          <motion.div
+                            key={sin.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03 }}
+                          >
+                            <SinCard
+                              sin={sin}
+                              selected={selectedIds.has(sin.id)}
+                              onToggle={() => toggleSin(sin.id)}
+                              onDetail={() => setSelectedSin(sin)}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })
+        ) : (
+          // Single category view (filter selected)
+          <AnimatePresence mode="popLayout">
+            {filtered.map((sin, i) => (
+              <motion.div
+                key={sin.id}
+                id={`sin-${sin.id}`}
+                layout
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: i * 0.025 }}
+              >
+                <SinCard
+                  sin={sin}
+                  selected={selectedIds.has(sin.id)}
+                  onToggle={() => toggleSin(sin.id)}
+                  onDetail={() => setSelectedSin(sin)}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
       </div>
 
-      <div className="px-5 flex flex-col gap-2">
-        <AnimatePresence mode="popLayout">
-          {filtered.map((sin, i) => (
+      {/* Large Floating Zakiy AI Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mx-5 mt-6 mb-4"
+      >
+        <button
+          onClick={() => setAiModalOpen(true)}
+          className="w-full relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 p-6 group hover:border-primary/50 transition-all"
+        >
+          {/* Animated background effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 group-hover:from-primary/10 transition-all duration-500" />
+          
+          <div className="relative flex items-center gap-4">
+            {/* Large floating Zakiy icon */}
             <motion.div
-              key={sin.id}
-              id={`sin-${sin.id}`}
-              layout
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ delay: i * 0.025 }}
+              animate={{ 
+                y: [0, -8, 0],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ 
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-green-600 shadow-xl shadow-primary/30 flex items-center justify-center text-4xl"
             >
-              <SinCard
-                sin={sin}
-                selected={selectedIds.has(sin.id)}
-                onToggle={() => toggleSin(sin.id)}
-                onDetail={() => setSelectedSin(sin)}
-              />
+              🤖
             </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+            
+            <div className="flex-1 text-right">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles size={14} className="text-primary" />
+                <h3 className="font-bold text-foreground">مساعد الزكي الذكي</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                اكتشف ذنوبك تلقائياً بالذكاء الاصطناعي! فقط صف حالتك أو تحدث وستقوم الخوارزمية بتحليلها وتحديد الذنوب المناسبة لك.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full">
+                  جرب الآن مجاناً
+                </span>
+                <ChevronDown size={14} className="text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+        </button>
+      </motion.div>
 
       {/* Sticky Save Button */}
       <AnimatePresence>
@@ -553,6 +752,32 @@ export default function SinsList() {
       <AnimatePresence>
         {selectedSin && (
           <SinDetailSheet sin={selectedSin} onClose={() => setSelectedSin(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* AI Detector Modal */}
+      <AnimatePresence>
+        {aiModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setAiModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-md bg-card border border-border rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <AiSinDetector onDetected={(ids, explanation) => {
+                handleAiDetected(ids, explanation);
+                setAiModalOpen(false);
+              }} />
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

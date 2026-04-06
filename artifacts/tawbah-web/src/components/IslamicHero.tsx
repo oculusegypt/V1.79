@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
 import { useLocation } from "wouter";
+import { apiUrl } from "@/lib/api-base";
 
 interface HeroItem {
   type: "ayah" | "hadith" | "dhikr" | "nafl" | "dua" | "wisdom";
@@ -704,7 +705,7 @@ export function IslamicHero() {
       return;
     }
     try {
-      const res = await fetch("/api/hero-content");
+      const res = await fetch(apiUrl("/api/hero-content"));
       if (!res.ok) throw new Error("failed");
       const data = (await res.json()) as { items: HeroItem[] };
       const list = data.items?.length ? data.items : FALLBACK;
@@ -805,8 +806,8 @@ export function IslamicHero() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background: isDark
-            ? "rgba(2, 22, 12, 0.48)"
-            : "linear-gradient(160deg, rgba(210,240,225,0.55) 0%, rgba(180,220,200,0.35) 50%, rgba(200,235,215,0.45) 100%)",
+            ? "linear-gradient(160deg, rgba(0,22,12,0.62) 0%, rgba(0,18,10,0.52) 45%, rgba(10,36,18,0.58) 100%)"
+            : "linear-gradient(160deg, rgba(214,246,230,0.62) 0%, rgba(196,236,214,0.42) 50%, rgba(232,215,140,0.18) 100%)",
         }}
       />
       {/* Bottom fade to page background — matches both light and dark */}
@@ -1065,13 +1066,13 @@ export function IslamicHero() {
               transition={{ duration: 2.4, repeat: orbiting ? Infinity : 0, ease: "easeInOut" }}
               style={{
                 position: "relative",
-                width: 140,
-                height: 140,
+                width: 120,
+                height: 120,
                 marginTop: orbiting ? 0 : 10,
                 marginLeft: 4,
                 marginRight: -4,
                 transition: "margin-top 0.48s cubic-bezier(0.34,1.26,0.64,1)",
-                borderRadius: orbiting ? "50%" : "30%",
+                borderRadius: "50%",
                 overflow: "hidden",
                 backdropFilter: orbiting ? "blur(10px) saturate(1.6)" : "none",
                 WebkitBackdropFilter: orbiting ? "blur(10px) saturate(1.6)" : "none",
@@ -1079,12 +1080,16 @@ export function IslamicHero() {
                   ? isDark
                     ? "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.22) 0%, rgba(180,220,255,0.10) 45%, rgba(100,160,230,0.08) 100%)"
                     : "radial-gradient(circle at 35% 28%, rgba(255,255,255,0.55) 0%, rgba(200,230,255,0.28) 45%, rgba(160,200,240,0.15) 100%)"
-                  : "transparent",
+                  : isDark
+                    ? "radial-gradient(circle at 40% 30%, rgba(234,179,8,0.08) 0%, rgba(16,185,129,0.05) 38%, rgba(0,0,0,0.0) 70%)"
+                    : "radial-gradient(circle at 40% 30%, rgba(234,179,8,0.10) 0%, rgba(16,185,129,0.06) 38%, rgba(255,255,255,0.0) 70%)",
                 boxShadow: orbiting
                   ? isDark
                     ? "0 0 0 1.5px rgba(255,255,255,0.18), 0 0 0 3px rgba(147,197,253,0.12), 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(147,197,253,0.12)"
                     : "0 0 0 1.5px rgba(255,255,255,0.75), 0 0 0 3px rgba(160,200,255,0.25), 0 8px 28px rgba(80,130,200,0.22), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(160,200,255,0.3)"
-                  : "none",
+                  : isDark
+                    ? "0 0 0 1px rgba(234,179,8,0.18), 0 0 0 2px rgba(16,185,129,0.08), 0 14px 34px rgba(0,0,0,0.55)"
+                    : "0 0 0 1px rgba(234,179,8,0.28), 0 0 0 2px rgba(16,185,129,0.10), 0 14px 30px rgba(23,77,43,0.20)",
               }}
             >
               <img
@@ -1093,16 +1098,17 @@ export function IslamicHero() {
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "contain",
+                  objectFit: "cover",
+                  objectPosition: "center 36%",
                   zIndex: 2,
                   transition: "filter 0.4s ease",
                   filter: orbiting
                     ? isDark
-                      ? "drop-shadow(0 0 14px rgba(147,197,253,0.5)) brightness(1.08) saturate(0.85)"
-                      : "drop-shadow(0 0 12px rgba(100,160,240,0.4)) brightness(1.05) saturate(0.75)"
+                      ? "drop-shadow(0 0 14px rgba(234,179,8,0.30)) drop-shadow(0 0 18px rgba(16,185,129,0.18)) brightness(1.05) saturate(1.05)"
+                      : "drop-shadow(0 0 12px rgba(234,179,8,0.24)) drop-shadow(0 0 16px rgba(16,185,129,0.16)) brightness(1.02) saturate(1.05)"
                     : isDark
-                      ? "drop-shadow(3px 8px 22px rgba(0,0,0,0.88)) drop-shadow(1px 3px 7px rgba(0,0,0,0.60))"
-                      : `saturate(0.7) brightness(0.88) ${LIGHT_LOGO_SHADOW[accentColor] ?? LIGHT_LOGO_SHADOW["forest"]!}`,
+                      ? "drop-shadow(3px 10px 26px rgba(0,0,0,0.85)) drop-shadow(0 0 16px rgba(234,179,8,0.12)) brightness(1.03) saturate(1.05)"
+                      : `brightness(0.98) saturate(1.05) ${LIGHT_LOGO_SHADOW[accentColor] ?? LIGHT_LOGO_SHADOW["forest"]!}`,
                 }}
               />
               {/* Crystal shimmer overlay — only when orbiting */}

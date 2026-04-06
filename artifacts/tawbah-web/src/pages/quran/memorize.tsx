@@ -64,6 +64,8 @@ function MemorizeSession({ surah, reciterId, onBack }: { surah: Surah; reciterId
   const [memorized, setMemorized] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadRef = useRef<HTMLAudioElement | null>(null);
+  const preloadedIdxRef = useRef<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -82,24 +84,69 @@ function MemorizeSession({ surah, reciterId, onBack }: { surah: Surah; reciterId
       .finally(() => setLoading(false));
   }, [surah.id]);
 
+  const urlForIdx = (idx: number): string | null => {
+    const ayah = ayahs[idx];
+    if (!ayah) return null;
+    return `${getApiBase()}/audio-proxy/quran/${reciterId}/${toGlobal(surah.id, ayah.numberInSurah)}.mp3`;
+  };
+
+  const preloadIdx = (idx: number) => {
+    const url = urlForIdx(idx);
+    if (!url) return;
+    if (preloadedIdxRef.current === idx) return;
+    if (!preloadRef.current) preloadRef.current = new Audio();
+    const pre = preloadRef.current;
+    pre.pause();
+    pre.onended = null;
+    pre.preload = "auto";
+    void setAudioSrc(pre, url)
+      .then(() => {
+        pre.load();
+      })
+      .catch(() => {});
+    preloadedIdxRef.current = idx;
+  };
+
   const playAyah = (idx: number) => {
     const ayah = ayahs[idx];
     if (!ayah) return;
-    if (!audioRef.current) audioRef.current = new Audio();
-    const audio = audioRef.current;
-    const url = `https://cdn.islamic.network/quran/audio/128/${reciterId}/${toGlobal(surah.id, ayah.numberInSurah)}.mp3`;
-    void setAudioSrc(audio, url)
-      .then(() => {
-        audio.load();
-        return audio.play();
-      })
-      .catch(() => {});
+
+    if (preloadedIdxRef.current === idx && preloadRef.current?.src) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+      }
+      const pre = preloadRef.current;
+      pre.currentTime = 0;
+      audioRef.current = pre;
+      preloadRef.current = new Audio();
+      preloadedIdxRef.current = null;
+      void audioRef.current.play().catch(() => {});
+    } else {
+      if (!audioRef.current) audioRef.current = new Audio();
+      const audio = audioRef.current;
+      const url = urlForIdx(idx);
+      if (!url) return;
+      void setAudioSrc(audio, url)
+        .then(() => {
+          audio.load();
+          return audio.play();
+        })
+        .catch(() => {});
+    }
+
     setIsPlaying(true);
-    audio.onended = () => setIsPlaying(false);
+    const audio = audioRef.current;
+    const nextPreload = idx + 1;
+    if (nextPreload < ayahs.length) preloadIdx(nextPreload);
+    if (audio) audio.onended = () => setIsPlaying(false);
   };
 
   const stopAudio = () => { audioRef.current?.pause(); setIsPlaying(false); };
-  useEffect(() => () => stopAudio(), []);
+  useEffect(() => () => {
+    stopAudio();
+    preloadRef.current?.pause();
+  }, []);
 
   const currentAyah = ayahs[currentIdx];
   const progress = ayahs.length > 0 ? ((currentIdx) / ayahs.length) * 100 : 0;

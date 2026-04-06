@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, ChevronDown, ChevronUp, AlertTriangle, Info, Plus
 import { PageHeader } from "@/components/PageHeader";
 import { useAppUserProgress } from "@/hooks/use-app-data";
 import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
 import { getSelectedSins, type Sin } from "@/lib/sins-data";
 
 type SinCategory = "khilwat" | "mali" | "huquq_nas" | "taqsir_faraid" | "other";
@@ -391,13 +392,12 @@ export default function Kaffarah() {
 
   useEffect(() => {
     const sessionId = getSessionId();
-    fetch(`/api/kaffarah?sessionId=${encodeURIComponent(sessionId)}`)
+    fetch(apiUrl(`/api/kaffarah?sessionId=${encodeURIComponent(sessionId)}`))
       .then((r) => r.json())
       .then((data: { stepKey: string; completed: boolean }[]) => {
         const map: Record<string, boolean> = {};
-        data.forEach((s) => { map[s.stepKey] = s.completed; });
+        data.forEach((x) => (map[x.stepKey] = x.completed));
         setCompletedSteps(map);
-        setLoading(false);
       })
       .catch(() => setLoading(false));
 
@@ -420,7 +420,7 @@ export default function Kaffarah() {
     const sessionId = getSessionId();
     const newVal = !completedSteps[stepKey];
     setCompletedSteps((prev) => ({ ...prev, [stepKey]: newVal }));
-    await fetch("/api/kaffarah/complete", {
+    await fetch(apiUrl("/api/kaffarah/complete"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, stepKey, completed: newVal }),

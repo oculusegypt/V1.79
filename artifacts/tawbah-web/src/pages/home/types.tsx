@@ -141,15 +141,16 @@ export const LIST_DEFAULT: ListId[] = [
 export const ALL_SECTIONS: SectionId[] = [
   "journey-card",
   "quran-card",
+  "islamic-programs",
   "adhkar",
   "rajaa",
   "dhikr",
   "prayer-times",
+  "notifications",
   "dhikr-rooms",
   "secret-dua",
   "hadi-tasks",
   "dua-timing",
-  "notifications",
   "journey30",
   "hadith-card",
   "garden",
@@ -163,14 +164,13 @@ export const ALL_SECTIONS: SectionId[] = [
   "danger-times",
   "relapse",
   "munajat",
-  "islamic-programs",
   "tawbah-card",
   "signs",
   "map",
   "live-stats",
 ];
 
-export const COMBINED_STORAGE_KEY = "home_combined_order_v11";
+export const COMBINED_STORAGE_KEY = "home_combined_order_v13";
 
 // ─── Order persistence ────────────────────────────────────────────────────────
 

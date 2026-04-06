@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PenLine, Trash2, Lock, ChevronDown, ChevronUp, Smile, Meh, Frown, Heart, Star } from "lucide-react";
 import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
 import { PageHeader } from "@/components/PageHeader";
 
 type Mood = "great" | "good" | "neutral" | "sad" | "struggling";
@@ -34,7 +35,7 @@ export default function Journal() {
 
   const fetchEntries = async () => {
     const sessionId = getSessionId();
-    const res = await fetch(`/api/journal?sessionId=${encodeURIComponent(sessionId)}`);
+    const res = await fetch(apiUrl(`/api/journal?sessionId=${encodeURIComponent(sessionId)}`));
     if (res.ok) {
       const data = await res.json();
       setEntries(data);
@@ -48,7 +49,7 @@ export default function Journal() {
     if (!content.trim()) return;
     setSaving(true);
     const sessionId = getSessionId();
-    const res = await fetch("/api/journal", {
+    const res = await fetch(apiUrl("/api/journal"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, content: content.trim(), mood }),
@@ -65,7 +66,7 @@ export default function Journal() {
 
   const handleDelete = async (id: number) => {
     const sessionId = getSessionId();
-    await fetch(`/api/journal/${id}`, {
+    await fetch(apiUrl(`/api/journal/${id}`), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId }),

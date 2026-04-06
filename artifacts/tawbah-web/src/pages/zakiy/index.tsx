@@ -6,9 +6,9 @@ import { getZakiyState } from "@/core/theme";
 import { cn } from "@/lib/utils";
 import { getSessionId } from "@/lib/session";
 import { voicePending } from "@/lib/voice-pending";
-import { getZakiyApiBase, isNativeApp } from "@/lib/api-base";
+import { aiUrl, isNativeApp } from "@/lib/api-base";
 import type { Message, MessageSegment, ApiHistory } from "./types";
-import { VOICE_PROFILES, VOICE_PROFILE_STORAGE_KEY, DEFAULT_VOICE_PROFILE_ID, GREETING } from "./constants";
+import { VOICE_PROFILES, VOICE_PROFILE_STORAGE_KEY, DEFAULT_VOICE_PROFILE_ID, GREETING, getTimeBasedGreeting } from "./constants";
 import { VoiceSelectorSheet } from "./components/VoiceSelectorSheet";
 import { ZakiyAvatar } from "./components/ZakiyAvatar";
 import { BotMessageBody } from "./components/BotMessageBody";
@@ -17,10 +17,16 @@ import { StarterCards } from "./components/StarterCards";
 
 export default function ZakiyPage() {
   const [, navigate] = useLocation();
-  const ZAKIY_API_BASE = getZakiyApiBase();
-  const [messages, setMessages] = useState<Message[]>([GREETING]);
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      ...GREETING,
+      text: getTimeBasedGreeting(),
+      timestamp: new Date(),
+    },
+  ]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  type ChatState = "idle" | "thinking" | "responding" | "error";
+  const [chatState, setChatState] = useState<ChatState>("idle");
   const [recording, setRecording] = useState(false);
   const [impressionOpenId, setImpressionOpenId] = useState<string | null>(null);
   const [impressionTexts, setImpressionTexts] = useState<Record<string, string>>({});
@@ -29,11 +35,17 @@ export default function ZakiyPage() {
   const [anniversaryMilestone, setAnniversaryMilestone] = useState<string | null>(null);
   const [autoPlayMsgId, setAutoPlayMsgId] = useState<string | null>(null);
   const autoPlayQueueRef = useRef<string[]>([]);
+  
+  // Get user's gender from localStorage and auto-select appropriate voice
+  const userGender = (localStorage.getItem("tawbah_gender") as "male" | "female") || "male";
+  const defaultVoiceForGender = userGender === "female" ? "sister-caring" : DEFAULT_VOICE_PROFILE_ID;
+  
   const [voiceProfileId, setVoiceProfileId] = useState<string>(
-    () => localStorage.getItem(VOICE_PROFILE_STORAGE_KEY) ?? DEFAULT_VOICE_PROFILE_ID
+    () => localStorage.getItem(VOICE_PROFILE_STORAGE_KEY) ?? defaultVoiceForGender
   );
   const [voiceSelectorOpen, setVoiceSelectorOpen] = useState(false);
   const [interimText, setInterimText] = useState("");
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -45,6 +57,7 @@ export default function ZakiyPage() {
 
   const sessionId = getSessionId();
   const hasUserMessages = messages.some((m) => m.role === "user");
+  const isBusy = chatState === "thinking" || chatState === "responding";
 
   function handleVoiceProfileSelect(id: string) {
     setVoiceProfileId(id);
@@ -52,6 +65,10 @@ export default function ZakiyPage() {
   }
 
   const currentVoiceProfile = VOICE_PROFILES.find((p) => p.id === voiceProfileId) ?? VOICE_PROFILES[1]!;
+
+  const handleDismissSuggestions = useCallback((msgId: string) => {
+    setDismissedSuggestions(prev => new Set(prev).add(msgId));
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,8 +114,8 @@ export default function ZakiyPage() {
     async function checkAnniversaryAndRisk() {
       try {
         const [annRes, riskRes] = await Promise.all([
-          fetch(`${ZAKIY_API_BASE}/zakiy/anniversary?sessionId=${sessionId}`, { signal: controller.signal }),
-          fetch(`${ZAKIY_API_BASE}/zakiy/risk-check?sessionId=${sessionId}`, { signal: controller.signal }),
+          fetch(aiUrl(`/api/zakiy/anniversary?sessionId=${encodeURIComponent(sessionId)}`), { signal: controller.signal }),
+          fetch(aiUrl(`/api/zakiy/risk-check?sessionId=${encodeURIComponent(sessionId)}`), { signal: controller.signal }),
         ]);
         const [annData, riskData] = await Promise.all([
           annRes.json() as Promise<{ anniversary: { milestone: string; message: string } | null }>,
@@ -132,7 +149,7 @@ export default function ZakiyPage() {
 
     checkAnniversaryAndRisk();
     return () => controller.abort();
-  }, [sessionId, ZAKIY_API_BASE]);
+  }, [sessionId]);
 
   function buildHistory(): ApiHistory[] {
     return messages
@@ -151,7 +168,7 @@ export default function ZakiyPage() {
 
   async function fetchSuggestions(history: ApiHistory[], msgId: string) {
     try {
-      const res = await fetch(`${ZAKIY_API_BASE}/zakiy/suggestions`, {
+      const res = await fetch(aiUrl("/api/zakiy/suggestions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, sessionId }),
@@ -206,7 +223,7 @@ export default function ZakiyPage() {
   }
 
   async function sendMessage(text: string) {
-    if (!text.trim() || loading) return;
+    if (!text.trim() || isBusy) return;
 
     const trimmed = text.trim();
     const history = buildHistory();
@@ -216,11 +233,10 @@ export default function ZakiyPage() {
       inputRef.current.style.height = "auto";
       inputRef.current.style.height = "42px";
     }
-    setLoading(true);
+    setChatState("thinking");
 
     try {
-      const url = `${ZAKIY_API_BASE}/zakiy/message`;
-      const res = await fetch(url, {
+      const res = await fetch(aiUrl("/api/zakiy/message"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: trimmed, history, sessionId, voiceProfile: voiceProfileId }),
@@ -234,10 +250,12 @@ export default function ZakiyPage() {
         throw new Error(serverError || `HTTP_${res.status}`);
       }
 
+      setChatState("responding");
       handleBotResponse(String(data?.response ?? ""), data?.segments);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("[Zakiy] sendMessage failed:", { error: msg, apiBase: ZAKIY_API_BASE });
+      console.error("[Zakiy] sendMessage failed:", { error: msg });
+      setChatState("error");
       // Keep the user-facing message friendly, but add a hint when it's clearly connectivity.
       if (msg === "Failed to fetch" || msg === "NetworkError" || msg.startsWith("HTTP_")) {
         addBotMessage("عذراً يا صاحبي، في مشكلة تقنية. تأكد من اتصال الإنترنت ورابط السيرفر ثم جرّب تاني.");
@@ -245,7 +263,8 @@ export default function ZakiyPage() {
         addBotMessage("عذراً يا صاحبي، في مشكلة تقنية. جرّب تاني بعد شوية.");
       }
     } finally {
-      setLoading(false);
+      // Always return to idle after the user-visible message is added.
+      setChatState("idle");
     }
   }
 
@@ -293,27 +312,30 @@ export default function ZakiyPage() {
             reader.readAsDataURL(blob);
           });
 
-          setLoading(true);
+          setChatState("thinking");
           const history = buildHistory();
-          const res = await fetch(`${ZAKIY_API_BASE}/zakiy/voice`, {
+          const res = await fetch(aiUrl("/api/zakiy/voice"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ audioBase64: b64, history, sessionId, voiceProfile: voiceProfileId }),
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error((data as { error?: string }).error ?? "voice_failed");
+          const raw = await res.text();
+          let data: any = null;
+          try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
 
-          const transcript = (data as { transcript?: string }).transcript ?? "";
-          if (transcript.trim()) addUserMessage(transcript.trim());
+          if (!res.ok) {
+            const serverError = (data && typeof data.error === "string" && data.error.trim()) ? data.error : "";
+            throw new Error(serverError || `HTTP_${res.status}`);
+          }
 
-          const response = (data as { response?: string }).response ?? "";
-          const segs = (data as { segments?: MessageSegment[] }).segments;
-          if (response) handleBotResponse(response, segs);
+          setChatState("responding");
+          handleBotResponse(String(data?.response ?? ""), data?.segments);
         } catch (e) {
           console.error("[Zakiy] Voice input failed:", e);
+          setChatState("error");
           addBotMessage("ما قدرت أسمعك — تأكد من السماح بالميكروفون وجرّب مرة ثانية.");
         } finally {
-          setLoading(false);
+          setChatState("idle");
           setRecording(false);
         }
       };
@@ -418,7 +440,7 @@ export default function ZakiyPage() {
 
           {/* Avatar + Name */}
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <ZakiyAvatar />
+            <ZakiyAvatar gender={userGender} />
             <div className="min-w-0">
               <h1 className="font-bold text-[15px] text-foreground leading-tight">الزكي</h1>
               <p className="text-[11px] text-muted-foreground leading-none truncate">صاحبك الروحاني دايماً معاك</p>
@@ -543,24 +565,25 @@ export default function ZakiyPage() {
                 </div>
               </div>
 
-              {msg.role === "bot" && msg.id !== "greeting" && (
+              {msg.role === "bot" && msg.id !== "greeting" && !dismissedSuggestions.has(msg.id) && (
                 <SuggestionCards
                   suggestions={msg.suggestions}
                   loading={msg.suggestionsLoading}
                   onSelect={(q) => sendMessage(q)}
+                  onDismiss={() => handleDismissSuggestions(msg.id)}
                 />
               )}
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {!hasUserMessages && !loading && (
+        {!hasUserMessages && !isBusy && (
           <StarterCards onSelect={(q) => sendMessage(q)} />
         )}
 
-        {loading && (
+        {isBusy && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-end gap-2.5">
-            <ZakiyAvatar pulse />
+            <ZakiyAvatar pulse gender={userGender} />
             <div className="bot-bubble rounded-2xl rounded-tr-[6px] px-5 py-4">
               <div className="flex gap-[6px] items-end">
                 {[0, 1, 2].map((idx) => (
@@ -631,7 +654,7 @@ export default function ZakiyPage() {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
                 }}
                 placeholder="اكتب ما في قلبك..."
-                disabled={loading || recording}
+                disabled={isBusy || recording}
                 rows={1}
                 className={cn(
                   "w-full resize-none rounded-xl px-3.5 py-2.5 text-[13.5px]",
@@ -640,7 +663,7 @@ export default function ZakiyPage() {
                   "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
                   "focus:bg-background/80",
                   "max-h-32 overflow-y-auto leading-relaxed transition-all",
-                  (loading || recording) && "opacity-50"
+                  (isBusy || recording) && "opacity-50"
                 )}
                 style={{ minHeight: "42px" }}
                 onInput={(e) => {
@@ -673,11 +696,11 @@ export default function ZakiyPage() {
                   exit={{ scale: 0.7, opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   onClick={() => sendMessage(input)}
-                  disabled={loading}
+                  disabled={isBusy}
                   className="flex-shrink-0 self-stretch w-12 rounded-xl flex items-center justify-center transition-all active:scale-90 text-white shadow-md shadow-primary/30"
                   style={{ background: "linear-gradient(135deg, #2dd4bf, #059669)" }}
                 >
-                  {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} className="scale-x-[-1]" />}
+                  {isBusy ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} className="scale-x-[-1]" />}
                 </motion.button>
               ) : (
                 <motion.button
@@ -687,11 +710,11 @@ export default function ZakiyPage() {
                   exit={{ scale: 0.7, opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   onClick={startVoiceInput}
-                  disabled={loading}
+                  disabled={isBusy}
                   className={cn(
                     "flex-shrink-0 self-stretch w-12 rounded-xl flex items-center justify-center transition-all active:scale-90",
                     "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-primary",
-                    loading && "opacity-40 cursor-not-allowed"
+                    isBusy && "opacity-40 cursor-not-allowed"
                   )}
                 >
                   <Mic size={18} />

@@ -5,7 +5,7 @@ import {
   User2, Settings2, Moon, Sun, Languages, Volume2, BookOpen,
   ChevronDown, Check, BarChart2, Calendar, Clock,
   ScrollText, PenLine, Bell, ChevronLeft, Shield, Palette, CheckSquare,
-  Zap, Music2, ImageIcon, Upload, RotateCcw, LogOut, Bot,
+  Zap, Music2, ImageIcon, Upload, RotateCcw, LogOut, Bot, Camera,
 } from "lucide-react";
 import { useSettings, QURAN_RECITERS, ACCENT_OPTIONS, type AccentColor } from "@/context/SettingsContext";
 import { useNotifications } from "@/context/NotificationsContext";
@@ -14,7 +14,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getAuthHeader } from "@/lib/auth-client";
 import { getSessionId } from "@/lib/session";
 import { useAuth } from "@/context/AuthContext";
+import { useZakiyMode } from "@/context/ZakiyModeContext";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-base";
 import { AnimatePresence } from "framer-motion";
 
 function Toggle({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
@@ -124,6 +126,7 @@ export default function Account() {
     toggleLang, toggleTheme, setAccentColor, setAutoPlayBotAudio, setAutoPlayQuran, setQuranReciterId } = useSettings();
   const { settings: notifSettings, updateSettings: updateNotifSettings } = useNotifications();
   const { user, logout } = useAuth();
+  const { aiMode, toggleAiMode } = useZakiyMode();
   const { data: progress } = useAppUserProgress();
   const { data: journeyMeta } = useUserJourney();
   const hasSin = journeyMeta?.hasSin ?? true;
@@ -134,6 +137,24 @@ export default function Account() {
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [heroUploading, setHeroUploading] = useState(false);
   const heroInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile picture state
+  const [profilePreview, setProfilePreview] = useState<string | null>(() => {
+    return localStorage.getItem("tawbah_profile_picture");
+  });
+  const profileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      setProfilePreview(dataUrl);
+      localStorage.setItem("tawbah_profile_picture", dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleHeroUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,7 +206,7 @@ export default function Account() {
     queryKey: ["journey30-account"],
     queryFn: async () => {
       const sessionId = getSessionId();
-      const res = await fetch(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`, { headers: { ...getAuthHeader() } });
+      const res = await fetch(apiUrl(`/api/journey30?sessionId=${encodeURIComponent(sessionId)}`), { headers: { ...getAuthHeader() } });
       if (!res.ok) return { completedCount: 0, currentDay: 1, streakDays: 0 };
       return res.json();
     },
@@ -210,17 +231,28 @@ export default function Account() {
         className="flex flex-col items-center mb-6"
       >
         <div className="relative w-20 h-20 mb-3">
-          <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
-            <User2 size={38} className="text-primary/60" />
+          <input
+            ref={profileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleProfileUpload}
+          />
+          <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden">
+            {profilePreview ? (
+              <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User2 size={38} className="text-primary/60" />
+            )}
           </div>
-          <Link
-            href="/zakiy"
+          <button
+            onClick={() => profileInputRef.current?.click()}
             className="absolute -right-1 -bottom-1 w-9 h-9 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25 flex items-center justify-center hover:brightness-110 transition-all"
-            title="زكي"
-            aria-label="زكي"
+            title="تغيير الصورة"
+            aria-label="تغيير الصورة"
           >
-            <Bot size={16} strokeWidth={2.2} />
-          </Link>
+            <Camera size={16} strokeWidth={2.2} />
+          </button>
         </div>
         {user ? (
           <>
@@ -345,6 +377,14 @@ export default function Account() {
           label="الوضع الليلي"
           description={theme === "dark" ? "مفعّل" : "غير مفعّل"}
           right={<Toggle checked={theme === "dark"} onToggle={toggleTheme} />}
+        />
+
+        {/* Zakiy Mode Toggle */}
+        <SettingRow
+          icon={<Bot size={17} />}
+          label="وضع الزكي"
+          description={aiMode ? "مفعّل - مساعدك الروحاني" : "معطّل"}
+          right={<Toggle checked={aiMode} onToggle={toggleAiMode} />}
         />
 
         {/* Color theme picker */}
@@ -702,6 +742,20 @@ export default function Account() {
           </div>
         </div>
       </motion.div>
+
+      {/* Logout Button - only show when logged in */}
+      {user && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          onClick={logout}
+          className="w-full py-3.5 rounded-2xl bg-destructive/10 hover:bg-destructive/20 text-destructive font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+        >
+          <LogOut size={18} />
+          تسجيل الخروج
+        </motion.button>
+      )}
     </div>
   );
 }

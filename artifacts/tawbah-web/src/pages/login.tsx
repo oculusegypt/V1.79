@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [gender, setGender] = useState<"male" | "female">("male");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +38,16 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(username, password);
       } else {
-        await register(username, email, password, phone || undefined);
+        await register(username, email, password, phone || undefined, gender);
       }
-      setLocation("/");
+      // Check for pending redirect after successful login
+      const pendingRedirect = sessionStorage.getItem("pending_redirect");
+      if (pendingRedirect) {
+        sessionStorage.removeItem("pending_redirect");
+        setLocation(pendingRedirect);
+      } else {
+        setLocation("/");
+      }
     } catch (err: unknown) {
       const code = err instanceof Error ? err.message : "unknown";
       setError(getErrorMsg(code));
@@ -128,6 +136,35 @@ export default function LoginPage() {
                   autoComplete="tel"
                   dir="ltr"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground block mb-1.5">
+                  الجنس
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGender("male")}
+                    className={`py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      gender === "male" 
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-background border border-border text-muted-foreground"
+                    }`}
+                  >
+                    👨 ذكر
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGender("female")}
+                    className={`py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      gender === "female" 
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-background border border-border text-muted-foreground"
+                    }`}
+                  >
+                    👩 أنثى
+                  </button>
+                </div>
               </div>
             </>
           )}

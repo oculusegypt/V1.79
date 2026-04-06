@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BookMarked } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -226,6 +227,8 @@ export function StarDots() {
 
 export function BentoCompassWidget() {
   const { needleRotation, nextPrayer, qibla, permDenied } = useQiblaAndPrayer();
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
 
   useEffect(() => {
     const t = setInterval(() => {}, 60_000);
@@ -241,21 +244,21 @@ export function BentoCompassWidget() {
           <>
             <p
               className="text-[9.5px] font-bold leading-tight"
-              style={{ color: "rgba(255,255,255,0.6)" }}
+              style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#065f46" }}
             >
               القبلة {Math.round(qibla!)}°
             </p>
             {nextPrayer ? (
               <p
                 className="text-[8px] leading-tight mt-0.5"
-                style={{ color: "rgba(255,200,80,0.8)" }}
+                style={{ color: isDark ? "rgba(255,200,80,0.8)" : "#b45309" }}
               >
                 {nextPrayer.name} {nextPrayer.time}
               </p>
             ) : (
               <p
                 className="text-[8px] leading-tight"
-                style={{ color: "rgba(255,255,255,0.3)" }}
+                style={{ color: isDark ? "rgba(255,255,255,0.3)" : "rgba(5,150,105,0.5)" }}
               >
                 جاري الحساب…
               </p>
@@ -265,13 +268,13 @@ export function BentoCompassWidget() {
           <>
             <p
               className="text-[9.5px] font-bold"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#065f46" }}
             >
               القبلة
             </p>
             <p
               className="text-[8px]"
-              style={{ color: "rgba(255,100,100,0.6)" }}
+              style={{ color: isDark ? "rgba(255,100,100,0.6)" : "#dc2626" }}
             >
               الموقع مرفوض
             </p>
@@ -280,13 +283,13 @@ export function BentoCompassWidget() {
           <>
             <p
               className="text-[9.5px] font-bold"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#065f46" }}
             >
               القبلة
             </p>
             <p
               className="text-[8px]"
-              style={{ color: "rgba(255,255,255,0.25)" }}
+              style={{ color: isDark ? "rgba(255,255,255,0.25)" : "rgba(5,150,105,0.5)" }}
             >
               جاري…
             </p>
@@ -298,22 +301,30 @@ export function BentoCompassWidget() {
         className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 relative overflow-hidden"
         style={{
           background: hasLocation
-            ? "linear-gradient(135deg, rgba(200,168,75,0.2) 0%, rgba(255,255,255,0.06) 100%)"
-            : "rgba(255,255,255,0.08)",
+            ? isDark
+              ? "linear-gradient(135deg, rgba(200,168,75,0.2) 0%, rgba(255,255,255,0.06) 100%)"
+              : "linear-gradient(135deg, rgba(5,150,105,0.16) 0%, rgba(16,185,129,0.08) 100%)"
+            : isDark
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(5,150,105,0.08)",
           border: hasLocation
-            ? "1px solid rgba(200,168,75,0.45)"
-            : "1px solid rgba(255,255,255,0.12)",
+            ? isDark
+              ? "1px solid rgba(200,168,75,0.45)"
+              : "1px solid rgba(5,150,105,0.32)"
+            : isDark
+              ? "1px solid rgba(255,255,255,0.12)"
+              : "1px solid rgba(5,150,105,0.18)",
         }}
       >
         {hasLocation && (
           <>
             <div
               className="absolute top-1 left-1/2 -translate-x-1/2 w-[2px] h-[4px] rounded-full"
-              style={{ background: "rgba(255,255,255,0.25)" }}
+              style={{ background: isDark ? "rgba(255,255,255,0.25)" : "rgba(6,95,70,0.35)" }}
             />
             <div
               className="absolute bottom-1 left-1/2 -translate-x-1/2 w-[2px] h-[4px] rounded-full"
-              style={{ background: "rgba(255,255,255,0.15)" }}
+              style={{ background: isDark ? "rgba(255,255,255,0.15)" : "rgba(6,95,70,0.25)" }}
             />
           </>
         )}
@@ -325,12 +336,12 @@ export function BentoCompassWidget() {
             className="absolute inset-0 flex items-center justify-center"
           >
             <svg width="28" height="28" viewBox="0 0 28 28">
-              <polygon points="14,3 16,13 12,13" fill="#c8a84b" />
+              <polygon points="14,3 16,13 12,13" fill={isDark ? "#c8a84b" : "#059669"} />
               <polygon
                 points="14,25 16,15 12,15"
-                fill="rgba(255,255,255,0.25)"
+                fill={isDark ? "rgba(255,255,255,0.25)" : "rgba(6,95,70,0.28)"}
               />
-              <circle cx="14" cy="14" r="2" fill="rgba(255,255,255,0.6)" />
+              <circle cx="14" cy="14" r="2" fill={isDark ? "rgba(255,255,255,0.6)" : "rgba(6,95,70,0.55)"} />
             </svg>
           </motion.div>
         ) : (
@@ -438,6 +449,9 @@ export function DhikrCounterCell() {
 
 export function VerseCellBento() {
   const [idx, setIdx] = useState(0);
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
+  
   useEffect(() => {
     const t = setInterval(
       () => setIdx((i) => (i + 1) % BENTO_VERSES.length),
@@ -450,17 +464,18 @@ export function VerseCellBento() {
     <div
       className="flex items-center gap-3 w-full rounded-[18px] px-4 py-3"
       style={{
-        background:
-          "linear-gradient(145deg, rgba(16,185,129,0.18) 0%, rgba(5,150,105,0.06) 100%)",
-        border: "1px solid rgba(16,185,129,0.24)",
+        background: isDark
+          ? "linear-gradient(145deg, rgba(16,185,129,0.18) 0%, rgba(5,150,105,0.06) 100%)"
+          : "linear-gradient(145deg, rgba(5,150,105,0.15) 0%, rgba(16,185,129,0.08) 100%)",
+        border: isDark ? "1px solid rgba(16,185,129,0.24)" : "1px solid rgba(5,150,105,0.25)",
         minHeight: 68,
       }}
     >
       <div
         className="w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0"
-        style={{ background: "rgba(16,185,129,0.22)" }}
+        style={{ background: isDark ? "rgba(16,185,129,0.22)" : "rgba(5,150,105,0.2)" }}
       >
-        <BookMarked size={12} style={{ color: "#10b981" }} />
+        <BookMarked size={12} style={{ color: isDark ? "#10b981" : "#059669" }} />
       </div>
       <div className="flex-1 min-w-0">
         <AnimatePresence mode="wait">
@@ -470,9 +485,9 @@ export function VerseCellBento() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.35 }}
-            className="font-bold leading-relaxed text-right truncate"
+            className="font-bold leading-relaxed text-center"
             style={{
-              color: "rgba(255,255,255,0.9)",
+              color: isDark ? "rgba(255,255,255,0.9)" : "#064e3b",
               fontFamily: "'Amiri Quran', serif",
               fontSize: 12,
             }}
@@ -481,8 +496,8 @@ export function VerseCellBento() {
           </motion.p>
         </AnimatePresence>
         <p
-          className="text-[9px] text-right mt-0.5"
-          style={{ color: "rgba(16,185,129,0.75)" }}
+          className="text-[9px] text-center mt-0.5"
+          style={{ color: isDark ? "rgba(16,185,129,0.75)" : "#065f46" }}
         >
           {v.ref}
         </p>

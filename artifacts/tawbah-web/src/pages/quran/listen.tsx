@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause, SkipBack, SkipForward, Search, ChevronRight,
-  Volume2, Loader2, RotateCcw, Check, X, Image, Activity,
+  Play, Pause, SkipBack, SkipForward, Search,
+  Volume2, Loader2, RotateCcw, Check, X,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
-import { setAudioSrc } from "@/lib/native-audio";
+import { preloadQuranVerseFast, getAudioUrlDirect, type QuranAudioSource } from "@/lib/quran-audio";
+import { preloadQuranVerseNative, getCachedAudioUrlNative } from "@/lib/quran-audio-native";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,38 @@ const NATURE_IMAGES = [
   "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=900&q=85",
 ];
 
+function BackgroundSlideshow({ imgIdx }: { imgIdx: number }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <AnimatePresence mode="sync">
+        <motion.div
+          key={imgIdx}
+          initial={{ opacity: 0, scale: 1.06 }}
+          animate={{ opacity: 1, scale: 1.01 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.2, ease: "easeInOut" }}
+          className="absolute inset-0"
+        >
+          <img
+            src={NATURE_IMAGES[imgIdx]}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ filter: "brightness(0.42) saturate(1.15)" }}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(1200px 520px at 70% 10%, rgba(200,168,75,0.22) 0%, rgba(0,0,0,0) 55%), linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.92) 100%)",
+        }}
+      />
+    </div>
+  );
+}
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 interface Surah { id: number; name: string; nameEn: string; ayahCount: number; juz: number; revelation: string; }
@@ -89,152 +122,7 @@ const SURAHS: Surah[] = [
   { id:114,name:"الناس",    nameEn:"An-Nas",       ayahCount:6,   juz:30, revelation:"مكية"  },
 ];
 
-// ─── Gallery ──────────────────────────────────────────────────────────────────
-
-function NatureGallery({ onClose }: { onClose: () => void }) {
-  const [imgIdx, setImgIdx] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => setImgIdx(i => (i + 1) % NATURE_IMAGES.length), 4500);
-    return () => clearInterval(t);
-  }, []);
-
-  return (
-    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 156 }}>
-      <AnimatePresence mode="sync">
-        <motion.div
-          key={imgIdx}
-          initial={{ opacity: 0, scale: 1.06 }}
-          animate={{ opacity: 1, scale: 1.02 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
-          className="absolute inset-0"
-        >
-          <img
-            src={NATURE_IMAGES[imgIdx]}
-            alt=""
-            className="w-full h-full object-cover"
-            style={{ filter: "brightness(0.72) saturate(1.15)" }}
-          />
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Overlay gradient */}
-      <div className="absolute inset-0 rounded-2xl" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)" }} />
-
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-95"
-        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.18)" }}
-      >
-        <X size={13} style={{ color: "rgba(255,255,255,0.9)" }} />
-      </button>
-
-      {/* Label */}
-      <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
-        <Image size={11} style={{ color: "rgba(255,255,255,0.7)" }} />
-        <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.7)" }}>خلق الله</span>
-      </div>
-
-      {/* Dots */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
-        {NATURE_IMAGES.map((_, i) => (
-          <div
-            key={i}
-            onClick={() => setImgIdx(i)}
-            className="cursor-pointer rounded-full transition-all"
-            style={{
-              width: i === imgIdx ? 14 : 5,
-              height: 5,
-              background: i === imgIdx ? "rgba(200,168,75,0.9)" : "rgba(255,255,255,0.35)",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Waveform (pure canvas animation — no Web Audio API) ──────────────────────
-
-function Waveform({ isPlaying, onOpenGallery }: { isPlaying: boolean; onOpenGallery: () => void }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const draw = () => {
-      const W = canvas.width;
-      const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-      const barCount = 40;
-      const barW = (W - (barCount - 1) * 2) / barCount;
-      const t = Date.now() / 500;
-
-      for (let i = 0; i < barCount; i++) {
-        let barH: number;
-        if (isPlaying) {
-          const v1 = Math.sin(t * 1.6 + i * 0.5) * 0.35;
-          const v2 = Math.sin(t * 2.8 + i * 0.8) * 0.25;
-          const v3 = Math.sin(t * 0.9 + i * 0.3) * 0.25;
-          const v4 = Math.sin(t * 3.5 + i * 1.2) * 0.15;
-          barH = Math.max(5, ((v1 + v2 + v3 + v4 + 1) / 2) * H * 0.90);
-        } else {
-          barH = 4 + Math.sin(Date.now() / 2200 + i * 0.6) * 2;
-        }
-        const x = i * (barW + 2);
-        const alpha = isPlaying ? 0.45 + (barH / H) * 0.55 : 0.22;
-        ctx.fillStyle = `rgba(200,168,75,${alpha})`;
-        ctx.beginPath();
-        if ((ctx as CanvasRenderingContext2D & { roundRect?: (...a: unknown[]) => void }).roundRect) {
-          (ctx as CanvasRenderingContext2D & { roundRect: (...a: unknown[]) => void }).roundRect(x, H - barH, barW, barH, 2);
-        } else {
-          ctx.rect(x, H - barH, barW, barH);
-        }
-        ctx.fill();
-      }
-      rafRef.current = requestAnimationFrame(draw);
-    };
-
-    rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [isPlaying]);
-
-  return (
-    <div
-      className="relative w-full rounded-2xl flex flex-col items-end justify-end overflow-hidden"
-      style={{
-        height: 156,
-        background: "linear-gradient(160deg, rgba(200,168,75,0.06) 0%, rgba(0,0,0,0) 100%)",
-        border: "1px solid rgba(200,168,75,0.13)",
-      }}
-    >
-      <canvas ref={canvasRef} width={360} height={120} className="w-full" style={{ height: 120 }} />
-      <button
-        onClick={onOpenGallery}
-        className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full flex items-center justify-center active:scale-95"
-        style={{ background: "rgba(200,168,75,0.12)", border: "1px solid rgba(200,168,75,0.28)" }}
-      >
-        <Image size={13} style={{ color: "#c8a84b" }} />
-      </button>
-      <div className="absolute top-3 right-3 flex items-center gap-1.5">
-        <Activity size={11} style={{ color: "rgba(200,168,75,0.55)" }} />
-        <span className="text-[10px]" style={{ color: "rgba(200,168,75,0.55)" }}>
-          {isPlaying ? "يُشغَّل الآن" : "في انتظار التشغيل"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Player ───────────────────────────────────────────────────────────────────
-
-function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string; onBack: () => void }) {
+function Player({ surah, reciterId }: { surah: Surah; reciterId: string }) {
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -244,10 +132,50 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
   const [duration, setDuration] = useState(0);
   const [currentTime, setCT] = useState(0);
   const [loop, setLoop] = useState(false);
-  const [showGallery, setShowGallery] = useState(true);
+  const [bgIdx, setBgIdx] = useState<number>(0);
+  const [activeAudio, setActiveAudio] = useState<HTMLAudioElement | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadRef = useRef<HTMLAudioElement | null>(null);
+  const preloadedIdxRef = useRef<number | null>(null);
+  const isPlayingRef = useRef(false);
+  const loopRef = useRef(false);
+  const currentIdxRef = useRef(0);
+
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const webSourcesRef = useRef<{ idx: number; src: AudioBufferSourceNode; startAt: number; dur: number }[]>([]);
+  const webStartAtRef = useRef<number | null>(null);
+  const webPausedAtRef = useRef<number>(0);
+  const webCurrentBufferDurRef = useRef<number>(0);
+  const webDecodeCacheRef = useRef<Map<number, AudioBuffer>>(new Map());
+  const webUsingRef = useRef<boolean>(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { loopRef.current = loop; }, [loop]);
+  useEffect(() => { currentIdxRef.current = currentIdx; }, [currentIdx]);
+
+  const stopWeb = useCallback(() => {
+    webSourcesRef.current.forEach(s => {
+      try { s.src.stop(); } catch { /* ignore */ }
+      try { s.src.disconnect(); } catch { /* ignore */ }
+    });
+    webSourcesRef.current = [];
+    webStartAtRef.current = null;
+    webPausedAtRef.current = 0;
+    webCurrentBufferDurRef.current = 0;
+  }, []);
+
+  const ensureAudioCtx = useCallback(async (): Promise<AudioContext> => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state !== "running") {
+      try { await ctx.resume(); } catch { /* ignore */ }
+    }
+    return ctx;
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -295,39 +223,135 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
     fetchSurah().finally(() => setLoading(false));
   }, [surah.id]);
 
-  const playAyah = useCallback((idx: number) => {
+  useEffect(() => {
+    const t = setInterval(() => setBgIdx(i => (i + 1) % NATURE_IMAGES.length), 6500);
+    return () => clearInterval(t);
+  }, []);
+
+  const ayahUrlForIdx = useCallback((idx: number): string | null => {
+    const ayah = ayahs[idx];
+    if (!ayah) return null;
+    const globalAyah = toGlobal(surah.id, ayah.numberInSurah);
+    // Use API proxy on both web and native for consistent audio handling
+    return `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
+  }, [ayahs, surah.id, reciterId]);
+
+  const decodeIdx = useCallback(async (idx: number): Promise<AudioBuffer | null> => {
+    if (idx < 0 || idx >= ayahs.length) return null;
+    const cached = webDecodeCacheRef.current.get(idx);
+    if (cached) return cached;
+
+    const url = ayahUrlForIdx(idx);
+    if (!url) return null;
+
+    try {
+      const ctx = await ensureAudioCtx();
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const arr = await r.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr.slice(0));
+      webDecodeCacheRef.current.set(idx, buf);
+      return buf;
+    } catch {
+      return null;
+    }
+  }, [ayahUrlForIdx, ayahs.length, ensureAudioCtx]);
+
+  const preloadAyah = useCallback((idx: number) => {
     const ayah = ayahs[idx];
     if (!ayah) return;
+    if (preloadedIdxRef.current === idx) return;
+    const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
+    if (isNativeApp()) {
+      void preloadQuranVerseNative(source);
+    } else {
+      void preloadQuranVerseFast(source);
+    }
+    preloadedIdxRef.current = idx;
+  }, [ayahs, surah.id, reciterId]);
+
+  const playAyah = useCallback(async (idx: number) => {
+    const ayah = ayahs[idx];
+    if (!ayah) return;
+
+    // Use stable HTMLAudio playback to avoid timing-related rapid auto-advance.
+    webUsingRef.current = false;
+    stopWeb();
+
     if (!audioRef.current) audioRef.current = new Audio();
     const audio = audioRef.current;
     audio.pause();
-    const globalAyah = toGlobal(surah.id, ayah.numberInSurah);
-    const url = isNativeApp()
-      ? `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyah}.mp3`
-      : `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
-    void setAudioSrc(audio, url)
-      .then(() => {
-        audio.load();
-        return audio.play();
-      })
-      .catch(() => {});
+    const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
+    const audioUrl = isNativeApp()
+      ? await getCachedAudioUrlNative(source)
+      : getAudioUrlDirect(source);
+    audio.volume = 1;
+    audio.onerror = () => {
+      console.error("[Play] Audio load error for idx:", idx, "error:", audio.error);
+    };
+    audio.onstalled = () => {
+      console.warn("[Play] Audio stalled for idx:", idx, "retrying...");
+      audio.load();
+    };
+    audio.onwaiting = () => {
+      console.warn("[Play] Audio waiting for data idx:", idx);
+    };
+    audio.onsuspend = () => {
+      console.warn("[Play] Audio suspended for idx:", idx);
+    };
+    audio.src = audioUrl;
+    audio.load();
+    audio.play().catch(() => {});
+    setActiveAudio(audio);
+
     setCurrentIdx(idx);
     setIsPlaying(true);
     setProgress(0);
-    audio.onended = () => {
-      if (loop) { audio.currentTime = 0; audio.play().catch(() => {}); }
-      else if (idx + 1 < ayahs.length) playAyah(idx + 1);
-      else { setIsPlaying(false); setProgress(0); }
-    };
-    setTimeout(() => {
+
+    if (audio) {
+      const next = idx + 1;
+      if (!loop && next < ayahs.length) preloadAyah(next);
+      audio.onended = () => {
+        if (loopRef.current) {
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        } else if (idx + 1 < ayahs.length) {
+          playAyah(idx + 1);
+        } else {
+          setIsPlaying(false);
+          setProgress(0);
+        }
+      };
+    }
+
+    window.setTimeout(() => {
       const el = scrollRef.current?.children[idx] as HTMLElement | undefined;
       el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }, 100);
-  }, [ayahs, surah.id, reciterId, loop]);
+  }, [ayahs, loop, preloadAyah, stopWeb, surah.id, reciterId]);
 
   useEffect(() => {
-    if (!audioRef.current) return;
-    const audio = audioRef.current;
+    let raf = 0;
+    const tick = () => {
+      if (webUsingRef.current && isPlayingRef.current && audioCtxRef.current && webStartAtRef.current !== null) {
+        const ctx = audioCtxRef.current;
+        const t = Math.max(0, ctx.currentTime - webStartAtRef.current - webPausedAtRef.current);
+        const d = webCurrentBufferDurRef.current || duration;
+        if (d > 0) {
+          setCT(t);
+          setDuration(d);
+          setProgress(Math.min(100, (t / d) * 100));
+        }
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [duration]);
+
+  useEffect(() => {
+    if (!activeAudio) return;
+    const audio = activeAudio;
     const onTime = () => {
       if (audio.duration > 0) {
         setProgress((audio.currentTime / audio.duration) * 100);
@@ -337,11 +361,28 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
     };
     audio.addEventListener("timeupdate", onTime);
     return () => audio.removeEventListener("timeupdate", onTime);
+  }, [activeAudio]);
+
+  useEffect(() => () => {
+    audioRef.current?.pause();
+    preloadRef.current?.pause();
+    stopWeb();
+    audioCtxRef.current?.close().catch(() => {});
   }, []);
 
-  useEffect(() => () => { audioRef.current?.pause(); }, []);
-
   const togglePlay = () => {
+    if (webUsingRef.current && audioCtxRef.current) {
+      const ctx = audioCtxRef.current;
+      if (isPlaying) {
+        ctx.suspend().catch(() => {});
+        setIsPlaying(false);
+      } else {
+        ctx.resume().catch(() => {});
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     if (!audioRef.current || !audioRef.current.src) {
       if (ayahs.length > 0) playAyah(currentIdx);
       return;
@@ -363,35 +404,43 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
 
   const currentAyah = ayahs[currentIdx];
 
+  const BOTTOM_NAV_GAP = 72;
+  const PLAYER_PANEL_EST_H = 360;
+
   return (
-    <div className="flex flex-col h-full" dir="rtl">
+    <div className="relative flex flex-col h-full overflow-hidden" dir="rtl" style={{ background: "hsl(var(--background))" }}>
+      <BackgroundSlideshow imgIdx={bgIdx} />
       {/* Header */}
-      <div className="px-4 py-3 flex items-center gap-3 border-b shrink-0" style={{ borderColor: "rgba(200,168,75,0.12)" }}>
-        <button onClick={onBack} className="w-8 h-8 rounded-xl bg-muted/60 flex items-center justify-center">
-          <ChevronRight size={16} className="text-muted-foreground" />
-        </button>
+      <div className="relative px-4 pt-4 pb-3 flex items-center gap-3 shrink-0">
+        <div className="w-9" />
         <div className="flex-1 text-center">
-          <p className="font-bold" style={{ fontFamily: "'Amiri Quran', serif", color: "#c8a84b" }}>سورة {surah.name}</p>
-          <p className="text-[10px] text-muted-foreground">{surah.ayahCount} آية · {surah.revelation}</p>
+          <p className="font-bold" style={{ fontFamily: "'Amiri Quran', serif", color: "#e7cf7c", fontSize: 18 }}>
+            سورة {surah.name}
+          </p>
+          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.65)" }}>
+            {QURAN_RECITERS.find(r => r.id === reciterId)?.nameAr ?? ""}
+          </p>
+          <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+            {surah.ayahCount} آية · {surah.revelation}
+          </p>
         </div>
-        <div className="w-8" />
+        <div className="w-9" />
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 size={28} className="animate-spin" style={{ color: "#c8a84b" }} />
+        <div className="relative flex-1 flex items-center justify-center">
+          <Loader2 size={28} className="animate-spin" style={{ color: "#e7cf7c" }} />
         </div>
       ) : error ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-4 gap-2">
+        <div className="relative flex-1 flex flex-col items-center justify-center p-4 gap-2">
           <p className="text-red-400 text-sm text-center">{error}</p>
           <p className="text-muted-foreground text-xs text-center">API: {getApiBase()}/quran/surah/{surah.id}</p>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="relative flex-1 flex flex-col overflow-hidden" style={{ paddingBottom: PLAYER_PANEL_EST_H + BOTTOM_NAV_GAP }}>
           {/* Current ayah display */}
           <div
             className="flex-1 flex flex-col items-center justify-center px-6 py-4"
-            style={{ background: "linear-gradient(160deg, rgba(200,168,75,0.05) 0%, rgba(0,0,0,0) 100%)" }}
           >
             <AnimatePresence mode="wait">
               {currentAyah && (
@@ -407,17 +456,18 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
                     style={{
                       fontFamily: "'Amiri Quran', 'Scheherazade New', serif",
                       fontSize: 22,
-                      color: isPlaying ? "#c8a84b" : "var(--foreground)",
+                      color: "rgba(255,255,255,0.92)",
+                      textShadow: "0 8px 26px rgba(0,0,0,0.65)",
                       transition: "color 0.4s",
                     }}
                   >
                     {currentAyah.text}
                     {" "}
-                    <span style={{ fontFamily: "'Amiri Quran', serif", fontSize: 18, color: "rgba(200,168,75,0.7)" }}>
+                    <span style={{ fontFamily: "'Amiri Quran', serif", fontSize: 18, color: "rgba(231,207,124,0.85)", textShadow: "0 8px 26px rgba(0,0,0,0.65)" }}>
                       ﴿{toEA(currentAyah.numberInSurah)}﴾
                     </span>
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.65)", textShadow: "0 8px 26px rgba(0,0,0,0.65)" }}>
                     آية {toEA(currentAyah.numberInSurah)} من {toEA(surah.ayahCount)}
                   </p>
                 </motion.div>
@@ -425,24 +475,34 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
             </AnimatePresence>
           </div>
 
-          {/* Gallery / Waveform */}
-          <div className="px-4 pb-2 shrink-0">
-            <AnimatePresence mode="wait">
-              {showGallery ? (
-                <motion.div key="gallery" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-                  <NatureGallery onClose={() => setShowGallery(false)} />
-                </motion.div>
-              ) : (
-                <motion.div key="waveform" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-                  <Waveform isPlaying={isPlaying} onOpenGallery={() => setShowGallery(true)} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        </div>
+      )}
 
-          {/* Ayah scroll row — ﴿١﴾ format */}
+      {!loading && !error && (
+        <div
+          className="fixed left-0 right-0 z-40"
+          style={{
+            bottom: 0,
+            height: BOTTOM_NAV_GAP,
+            background: "hsl(var(--background) / 0.92)",
+            backdropFilter: "blur(18px)",
+          }}
+        />
+      )}
+
+      {!loading && !error && (
+        <div
+          className="fixed left-0 right-0 z-50"
+          style={{
+            bottom: BOTTOM_NAV_GAP,
+            background: "hsl(var(--background) / 0.92)",
+            backdropFilter: "blur(18px)",
+            borderTop: "1px solid rgba(200,168,75,0.14)",
+          }}
+        >
+          <div className="relative px-4 pt-3" />
           <div
-            className="overflow-x-auto px-4 py-2 border-t shrink-0 ayah-scroll-row"
+            className="overflow-x-auto px-4 py-2 border-t ayah-scroll-row"
             style={{ borderColor: "rgba(200,168,75,0.1)" }}
           >
             <div ref={scrollRef} className="flex gap-1.5 min-w-max">
@@ -471,8 +531,7 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
             </div>
           </div>
 
-          {/* Progress */}
-          <div className="px-5 pt-3 pb-2 shrink-0">
+          <div className="px-5 pt-3 pb-2">
             <div
               className="h-1.5 rounded-full overflow-hidden mb-1 cursor-pointer"
               style={{ background: "rgba(255,255,255,0.08)" }}
@@ -494,19 +553,21 @@ function Player({ surah, reciterId, onBack }: { surah: Surah; reciterId: string;
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="px-5 pb-5 shrink-0">
+          <div className="px-5 pb-5">
             <div className="flex items-center justify-center gap-6">
-              <button
+              <motion.button
+                animate={loop ? { scale: [1, 1.15, 1] } : {}}
+                transition={loop ? { repeat: Infinity, duration: 1.2, ease: "easeInOut" } : {}}
                 onClick={() => setLoop(l => !l)}
                 className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
                 style={{
-                  background: loop ? "rgba(200,168,75,0.2)" : "rgba(255,255,255,0.05)",
+                  background: loop ? "rgba(200,168,75,0.25)" : "rgba(255,255,255,0.05)",
                   color: loop ? "#c8a84b" : "rgba(255,255,255,0.4)",
+                  border: loop ? "1px solid rgba(200,168,75,0.5)" : "1px solid transparent",
                 }}
               >
                 <RotateCcw size={16} />
-              </button>
+              </motion.button>
               <button
                 onClick={() => currentIdx > 0 && playAyah(currentIdx - 1)}
                 className="w-11 h-11 rounded-full flex items-center justify-center"
@@ -653,7 +714,7 @@ export default function QuranListenPage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedSurah ? (
-          <Player surah={selectedSurah} reciterId={quranReciterId} onBack={() => setSelectedSurah(null)} />
+          <Player surah={selectedSurah} reciterId={quranReciterId} />
         ) : (
           <SurahList onSelect={setSelectedSurah} />
         )}

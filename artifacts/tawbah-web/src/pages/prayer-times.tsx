@@ -243,51 +243,84 @@ export default function PrayerTimes() {
     }
   };
 
-  const handleGeolocate = () => {
-    if (!navigator.geolocation) {
-      setError("المتصفح لا يدعم تحديد الموقع");
-      return;
-    }
+  const handleGeolocate = async () => {
+    setError("");
     setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const res = await fetch(
-            `https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=4`
-          );
-          const data = await res.json();
-          if (data.code !== 200) throw new Error("تعذّر جلب المواقيت");
-          const t = data.data.timings as PrayerTimings;
-          const cleaned: PrayerTimings = {
-            Fajr: t.Fajr.split(" ")[0],
-            Sunrise: t.Sunrise.split(" ")[0],
-            Dhuhr: t.Dhuhr.split(" ")[0],
-            Asr: t.Asr.split(" ")[0],
-            Maghrib: t.Maghrib.split(" ")[0],
-            Isha: t.Isha.split(" ")[0],
-          };
-          setTimings(cleaned);
-          const loc = data.data.meta?.timezone?.split("/")[1]?.replace("_", " ") || "موقعك";
-          setCity(loc);
-          setCountry("Auto");
-          setCityInput(loc);
-          setCountryInput("Auto");
-          localStorage.setItem("prayerCity", loc);
-          localStorage.setItem("prayerCountry", "Auto");
-          localStorage.setItem("prayerLat", String(pos.coords.latitude));
-          localStorage.setItem("prayerLng", String(pos.coords.longitude));
-          localStorage.removeItem("prayer_timings_cache");
-        } catch {
-          setError("تعذّر جلب المواقيت");
-        } finally {
-          setLoading(false);
+
+    const applyPosition = async (lat: number, lng: number) => {
+      const res = await fetch(
+        `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=4`
+      );
+      const data = await res.json();
+      if (data.code !== 200) throw new Error("تعذّر جلب المواقيت");
+      const t = data.data.timings as PrayerTimings;
+      const cleaned: PrayerTimings = {
+        Fajr: t.Fajr.split(" ")[0],
+        Sunrise: t.Sunrise.split(" ")[0],
+        Dhuhr: t.Dhuhr.split(" ")[0],
+        Asr: t.Asr.split(" ")[0],
+        Maghrib: t.Maghrib.split(" ")[0],
+        Isha: t.Isha.split(" ")[0],
+      };
+      setTimings(cleaned);
+      const loc = data.data.meta?.timezone?.split("/")[1]?.replace("_", " ") || "موقعك";
+      setCity(loc);
+      setCountry("Auto");
+      setCityInput(loc);
+      setCountryInput("Auto");
+      localStorage.setItem("prayerCity", loc);
+      localStorage.setItem("prayerCountry", "Auto");
+      localStorage.setItem("prayerLat", String(lat));
+      localStorage.setItem("prayerLng", String(lng));
+      localStorage.removeItem("prayer_timings_cache");
+    };
+
+    try {
+      if (native) {
+        const plugins = (window as unknown as { Capacitor?: { Plugins?: Record<string, any> } })
+          .Capacitor?.Plugins;
+        const Geolocation = plugins?.Geolocation as
+          | undefined
+          | {
+              requestPermissions: () => Promise<{ location?: string; coarseLocation?: string }>;
+              getCurrentPosition: (opts?: any) => Promise<{ coords: { latitude: number; longitude: number } }>;
+            };
+
+        if (Geolocation) {
+          const perm = await Geolocation.requestPermissions();
+          const locPerm = perm.location ?? perm.coarseLocation;
+          if (locPerm !== "granted") {
+            setError("رُفض الإذن بالوصول للموقع");
+            return;
+          }
+          const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 12000 });
+          await applyPosition(pos.coords.latitude, pos.coords.longitude);
+          return;
         }
-      },
-      () => {
-        setError("رُفض الإذن بالوصول للموقع");
-        setLoading(false);
       }
-    );
+
+      if (!navigator.geolocation) {
+        setError("المتصفح لا يدعم تحديد الموقع");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          void applyPosition(pos.coords.latitude, pos.coords.longitude).catch(() => {
+            setError("تعذّر جلب المواقيت");
+          }).finally(() => setLoading(false));
+        },
+        () => {
+          setError("رُفض الإذن بالوصول للموقع");
+          setLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 12000 }
+      );
+    } catch {
+      setError("تعذّر جلب المواقيت");
+    } finally {
+      if (native) setLoading(false);
+    }
   };
 
   const enablePrayerReminders = async () => {

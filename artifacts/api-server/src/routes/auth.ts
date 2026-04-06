@@ -13,7 +13,7 @@ function normalizeUsername(u: string) { return u.trim().toLowerCase(); }
 function normalizeEmail(e: string) { return e.trim().toLowerCase(); }
 
 router.post("/auth/register", async (req, res) => {
-  const { username: usernameRaw, email: emailRaw, password, phone } = req.body ?? {};
+  const { username: usernameRaw, email: emailRaw, password, phone, gender } = req.body ?? {};
 
   if (typeof usernameRaw !== "string" || !usernameRaw.trim()) {
     return res.status(400).json({ error: "username_required" });
@@ -46,13 +46,20 @@ router.post("/auth/register", async (req, res) => {
   const { salt, hash } = hashPassword(password);
   const [user] = await db
     .insert(usersTable)
-    .values({ username, email, phone: phone ?? null, passwordSalt: salt, passwordHash: hash })
-    .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email });
+    .values({ 
+      username, 
+      email, 
+      phone: phone ?? null, 
+      gender: gender === "female" ? "female" : "male",
+      passwordSalt: salt, 
+      passwordHash: hash 
+    })
+    .returning({ id: usersTable.id, username: usersTable.username, email: usersTable.email, gender: usersTable.gender });
 
   const token = await signJwt({ sub: String(user!.id), username: user!.username ?? username, email: user!.email });
   setAuthCookie(res, token);
 
-  return res.json({ user: { id: user!.id, username: user!.username, email: user!.email } });
+  return res.json({ user: { id: user!.id, username: user!.username, email: user!.email, gender: user!.gender } });
 });
 
 router.post("/auth/login", async (req, res) => {

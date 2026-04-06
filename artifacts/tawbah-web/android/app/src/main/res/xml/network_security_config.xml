@@ -10,5 +10,9 @@
         <domain includeSubdomains="true">everyayah.com</domain>
         <domain includeSubdomains="true">api.alquran.cloud</domain>
         <domain includeSubdomains="true">api.aladhan.com</domain>
+        <domain includeSubdomains="true">radiojar.com</domain>
+        <domain includeSubdomains="true">zayedquran.gov.ae</domain>
+        <domain includeSubdomains="true">qurango.net</domain>
+        <domain includeSubdomains="true">backup.qurango.net</domain>
     </domain-config>
 </network-security-config>

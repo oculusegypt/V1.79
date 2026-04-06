@@ -32,6 +32,8 @@ interface LocalNotification {
   iconColor?: string;
 }
 
+const ANDROID_SMALL_ICON = "ic_stat_tawbah";
+
 let _plugin: LocalNotificationsPlugin | null = null;
 let _channelsCreated = false;
 
@@ -175,7 +177,7 @@ export async function scheduleLocalNotifications(items: ScheduledItem[]): Promis
       },
       extra: { url: item.url ?? "/" },
       channelId: ch,
-      smallIcon: "ic_launcher_foreground",
+      smallIcon: ANDROID_SMALL_ICON,      
       iconColor: "#2d7a4f",
     };
     // For reminder channel: do not pass a custom sound so Android uses the device default notification sound.
@@ -220,7 +222,7 @@ export async function showLocalNotifNow(params: {
     schedule: { at: fireAt, allowWhileIdle: true },
     extra: { url: params.url ?? "/" },
     channelId: ch,
-    smallIcon: "ic_launcher_foreground",
+    smallIcon: ANDROID_SMALL_ICON,
     iconColor: "#2d7a4f",
   };
   // For reminder channel: do not pass a custom sound so Android uses the device default notification sound.

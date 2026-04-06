@@ -85,6 +85,8 @@ function TafsirReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
   const [playingNum, setPlayingNum] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadRef = useRef<HTMLAudioElement | null>(null);
+  const preloadedNumRef = useRef<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -113,22 +115,62 @@ function TafsirReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
     }).catch(e => setError(`Fetch failed: ${e.message}`)).finally(() => setLoading(false));
   }, [surah.id]);
 
-  const playAyah = (num: number) => {
-    if (!audioRef.current) audioRef.current = new Audio();
-    const audio = audioRef.current;
-    const url = `https://cdn.islamic.network/quran/audio/128/${reciterId}/${toGlobal(surah.id, num)}.mp3`;
-    void setAudioSrc(audio, url)
+  const urlForNum = (num: number) => `${getApiBase()}/audio-proxy/quran/${reciterId}/${toGlobal(surah.id, num)}.mp3`;
+
+  const preloadNum = (num: number) => {
+    if (preloadedNumRef.current === num) return;
+    if (!preloadRef.current) preloadRef.current = new Audio();
+    const pre = preloadRef.current;
+    pre.pause();
+    pre.onended = null;
+    pre.preload = "auto";
+    const url = urlForNum(num);
+    void setAudioSrc(pre, url)
       .then(() => {
-        audio.load();
-        return audio.play();
+        pre.load();
       })
       .catch(() => {});
+    preloadedNumRef.current = num;
+  };
+
+  const playAyah = (num: number) => {
+    if (preloadedNumRef.current === num && preloadRef.current?.src) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+      }
+      const pre = preloadRef.current;
+      pre.currentTime = 0;
+      audioRef.current = pre;
+      preloadRef.current = new Audio();
+      preloadedNumRef.current = null;
+      void audioRef.current.play().catch(() => {});
+    } else {
+      if (!audioRef.current) audioRef.current = new Audio();
+      const audio = audioRef.current;
+      const url = urlForNum(num);
+      void setAudioSrc(audio, url)
+        .then(() => {
+          audio.load();
+          return audio.play();
+        })
+        .catch(() => {});
+    }
+
     setPlayingNum(num);
-    audio.onended = () => setPlayingNum(null);
+    const audio = audioRef.current;
+    if (audio) {
+      const next = num + 1;
+      if (next <= surah.ayahCount) preloadNum(next);
+      audio.onended = () => setPlayingNum(null);
+    }
   };
 
   const stopAudio = () => { audioRef.current?.pause(); setPlayingNum(null); };
-  useEffect(() => () => stopAudio(), []);
+  useEffect(() => () => {
+    stopAudio();
+    preloadRef.current?.pause();
+  }, []);
 
   const tafsirFor = (num: number) => tafsirAyahs.find(a => a.numberInSurah === num);
 

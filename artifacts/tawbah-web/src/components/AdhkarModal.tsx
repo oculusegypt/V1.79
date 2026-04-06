@@ -36,9 +36,7 @@ function toGlobalAyah(surah: number, ayah: number): number {
 
 function ayahProxyUrl(surah: number, ayah: number): string {
   const globalAyah = toGlobalAyah(surah, ayah);
-  return isNativeApp()
-    ? `https://cdn.islamic.network/quran/audio/128/${RECITER}/${globalAyah}.mp3`
-    : `${getApiBase()}/audio-proxy/quran/${RECITER}/${globalAyah}.mp3`;
+  return `${getApiBase()}/audio-proxy/quran/${RECITER}/${globalAyah}.mp3`;
 }
 
 // ─── Morning Adhkar Data ─────────────────────────────────────────────────────

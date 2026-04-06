@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Sparkles, Clock, Search, Heart, X, Play, Pause, Loader2, BookText } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { useSettings } from "@/context/SettingsContext";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
+import { setAudioSrc } from "@/lib/native-audio";
 
 let activeGlobalAudio: { element: HTMLAudioElement; stop: () => void } | null = null;
 
@@ -17,9 +19,7 @@ function toGlobalAyah(surah: number, ayah: number): number {
 }
 function reciterAudioUrl(surah: number, ayah: number, reciterId: string): string {
   const globalAyah = toGlobalAyah(surah, ayah);
-  return isNativeApp()
-    ? `https://cdn.islamic.network/quran/audio/128/${reciterId}/${globalAyah}.mp3`
-    : `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
+  return `${getApiBase()}/audio-proxy/quran/${reciterId}/${globalAyah}.mp3`;
 }
 
 const QURAN_VERSES: { id: number; arabic: string; source: string; tag: string; note: string; category: VerseCategory; surah: number; ayah: number }[] = [
@@ -371,6 +371,11 @@ function VerseCardItem({
   const setupAnalyser = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (!isNativeApp()) {
+      return;
+    }
+
     if (audioCtxRef.current) {
       if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
       runVisualization();
@@ -415,9 +420,13 @@ function VerseCardItem({
       if (activeGlobalAudio && activeGlobalAudio.element !== audio) activeGlobalAudio.stop();
       activeGlobalAudio = { element: audio, stop: stopSelf };
       try {
-        await setAudioSrc(audio, url);
+        if (isNativeApp()) {
+          await setAudioSrc(audio, url);
+        } else {
+          void setAudioSrc(audio, url);
+        }
         audio.load();
-        await audio.play();
+        void audio.play().catch(() => {});
       } catch {}
       setIsPlaying(true);
       setupAnalyser();
@@ -489,7 +498,6 @@ function VerseCardItem({
       >
         <audio
           ref={audioRef}
-          crossOrigin="anonymous"
           preload="none"
           onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
           onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
@@ -684,11 +692,11 @@ function TafseerModal({ surah, ayah, source, arabic, onClose }: TafseerModalProp
   }, [surah, ayah]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative mt-auto mx-auto w-full max-w-lg bg-card rounded-t-2xl border border-border shadow-2xl max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+    <Drawer open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DrawerContent
+        dir="rtl"
+        className="rounded-t-2xl border border-border bg-card"
+        style={{ maxHeight: "80vh" }}
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
@@ -699,7 +707,8 @@ function TafseerModal({ surah, ayah, source, arabic, onClose }: TafseerModalProp
             <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 flex flex-col gap-4">
+
+        <div className="overflow-y-auto px-5 py-4 flex flex-col gap-4">
           <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
             <p className="font-display text-[14px] leading-loose text-foreground text-center mb-2">{arabic}</p>
             <p className="text-xs text-primary font-bold text-center">{source}</p>
@@ -721,8 +730,8 @@ function TafseerModal({ surah, ayah, source, arabic, onClose }: TafseerModalProp
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -752,11 +761,17 @@ function VerseAudioPlayer({ surah, ayah, onOpenChange }: { surah: number; ayah: 
       if (activeGlobalAudio && activeGlobalAudio.element !== audio) activeGlobalAudio.stop();
       activeGlobalAudio = { element: audio, stop: stopSelf };
       try {
-        audio.src = url;
+        if (isNativeApp()) {
+          await setAudioSrc(audio, url);
+        } else {
+          audio.src = url;
+        }
+        audio.load();
         await audio.play();
         setIsPlaying(true);
         onOpenChange?.(true);
       } catch (e) {
+        console.error("[Rajaa] Audio play error:", e);
         if (activeGlobalAudio?.element === audio) activeGlobalAudio = null;
         setIsPlaying(false);
         onOpenChange?.(false);
@@ -770,7 +785,8 @@ function VerseAudioPlayer({ surah, ayah, onOpenChange }: { surah: number; ayah: 
         ref={audioRef}
         preload="none"
         onEnded={stopSelf}
-        onError={() => {
+        onError={(e) => {
+          console.error("[Rajaa] Audio error:", audioRef.current?.error);
           setIsPlaying(false);
           if (activeGlobalAudio?.element === audioRef.current) activeGlobalAudio = null;
           onOpenChange?.(false);

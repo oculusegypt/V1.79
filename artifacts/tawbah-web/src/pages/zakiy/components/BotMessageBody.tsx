@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { Pause, Volume2, Loader2, Heart, CheckSquare } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
-import { getApiBase } from "@/lib/api-base";
+import { aiUrl } from "@/lib/api-base";
 import type { Message, ApiHistory } from "../types";
 import { FormattedText } from "./FormattedText";
 import { QuranCard } from "./QuranCard";
@@ -130,7 +130,7 @@ export function BotMessageBody({
     setHadiLoading(true);
     try {
       const fullText = segments.map(s => s.text).join("\n").slice(0, 2000);
-      const res = await fetch(`${getApiBase()}/hadi-tasks/extract`, {
+      const res = await fetch(aiUrl("/api/hadi-tasks/extract"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: fullText, sessionId }),
@@ -153,7 +153,7 @@ export function BotMessageBody({
     if (impressionText) { onImpressionToggle(msg.id, impressionText); return; }
     setImpressionLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/zakiy/impression`, {
+      const res = await fetch(aiUrl("/api/zakiy/impression"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ history, sessionId }),

@@ -24,7 +24,10 @@ import {
 import { Link } from "wouter";
 import { StandardHeader } from "@/components/header/StandardHeader";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
-import { getApiBase } from "@/lib/api-base";
+import { getApiBase, isNativeApp } from "@/lib/api-base";
+import { preloadQuranVerseFast, getAudioUrlDirect, type QuranAudioSource } from "@/lib/quran-audio";
+import { preloadQuranVerseNative, getCachedAudioUrlNative } from "@/lib/quran-audio-native";
+import { setAudioSrc } from "@/lib/native-audio";
 
 // ─── Audio helpers ─────────────────────────────────────────────────────────────
 
@@ -48,7 +51,8 @@ function cdnAudioUrl(
   ayahNum: number,
   reciterId: string,
 ): string {
-  return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${toGlobalAyah(surahId, ayahNum)}.mp3`;
+  const globalAyah = toGlobalAyah(surahId, ayahNum);
+  return `/api/audio-proxy/quran/${encodeURIComponent(reciterId)}/${globalAyah}.mp3`;
 }
 
 const TO_AR = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
@@ -1376,67 +1380,36 @@ function MushafDisplay({
     (idx: number) => {
       const ayah = ayahs[idx];
       if (!ayah) return;
-      if (!preloadRef.current) preloadRef.current = new Audio();
-      const pre = preloadRef.current;
-      // Cancel any previous preload
-      pre.pause();
-      pre.onended = null;
-      // preload="auto" tells the browser to download the full file, not just metadata
-      pre.preload = "auto";
-      pre.src = cdnAudioUrl(surahId, ayah.numberInSurah, reciterId);
-      pre.load();
+      if (preloadedIdxRef.current === idx) return;
+      const source: QuranAudioSource = { surahId, ayahNum: ayah.numberInSurah, reciterId };
+      if (isNativeApp()) {
+        void preloadQuranVerseNative(source);
+      } else {
+        void preloadQuranVerseFast(source);
+      }
       preloadedIdxRef.current = idx;
-      // Warm up the audio pipeline: start silent playback then pause immediately.
-      // This primes the OS audio stack so switching to this element is instant.
-      pre.volume = 0;
-      pre
-        .play()
-        .then(() => {
-          pre.pause();
-          pre.currentTime = 0;
-          pre.volume = 1;
-        })
-        .catch(() => {
-          pre.volume = 1;
-        }); // Ignore autoplay errors
     },
     [ayahs, surahId, reciterId],
   );
 
   const playIdx = useCallback(
-    (idx: number) => {
+    async (idx: number) => {
       const ayah = ayahs[idx];
       if (!ayah) return;
 
-      // If this verse was preloaded, swap it in — it's already buffered and warmed up
-      if (
-        preloadedIdxRef.current === idx &&
-        preloadRef.current &&
-        preloadRef.current.src
-      ) {
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.onended = null;
-        }
-        const pre = preloadRef.current;
-        pre.volume = 1;
-        pre.currentTime = 0;
-        audioRef.current = pre;
-        preloadRef.current = new Audio();
-        preloadedIdxRef.current = null;
-      } else {
-        // No preload ready — load fresh
-        if (!audioRef.current) audioRef.current = new Audio();
-        const audio = audioRef.current;
-        audio.pause();
-        audio.onended = null;
-        audio.src = cdnAudioUrl(surahId, ayah.numberInSurah, reciterId);
-        audio.load();
-      }
+      const source: QuranAudioSource = { surahId, ayahNum: ayah.numberInSurah, reciterId };
+      let audioUrl = isNativeApp() ? await getCachedAudioUrlNative(source) : getAudioUrlDirect(source);
 
+      if (!audioRef.current) audioRef.current = new Audio();
       const audio = audioRef.current;
-      audio.play().catch(() => {});
-      activeQuranAudio = { element: audio, stop: stopAudio };
+      audio.pause();
+      audio.onended = null;
+      audio.src = audioUrl;
+      audio.load();
+
+      const audioEl = audioRef.current;
+      audioEl.play().catch(() => {});
+      activeQuranAudio = { element: audioEl, stop: stopAudio };
       setPlayingIdx(idx);
       setIsPlaying(true);
       spanRefs.current[idx]?.scrollIntoView({
@@ -1444,12 +1417,10 @@ function MushafDisplay({
         block: "center",
       });
 
-      // Preload the next verse immediately
       const next = idx + 1;
       if (next < ayahs.length) preloadIdx(next);
 
-      // Use playIdxRef so onended always calls the latest version of playIdx
-      audio.onended = () => {
+      audioEl.onended = () => {
         if (next < ayahs.length) {
           playIdxRef.current(next);
         } else {
@@ -2084,6 +2055,7 @@ function DailyAyahCard() {
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
+              style={{ zIndex: 50, position: "relative" }}
             >
               <div
                 className="mt-3 p-3 rounded-xl"

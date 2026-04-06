@@ -205,11 +205,13 @@ router.post("/journey30/relapse", optionalAuth, async (req, res) => {
   const userId = getUserId(aReq);
   if (!userId) return res.status(400).json({ error: "sessionId or auth token required" });
 
+  // Remove journey progress for this user/session
   await Promise.all([
     db.delete(journey30Table).where(eq(journey30Table.userId, userId)),
     db.delete(journey30TasksTable).where(eq(journey30TasksTable.userId, userId)),
   ]);
 
+  // Increment relapse counter if we have a session row
   const existingProgress = await db.query.userProgressTable.findFirst({
     where: eq(userProgressTable.sessionId, userId),
   });

@@ -1,5 +1,6 @@
 export const API_CONFIG = {
-  serverUrl: "https://14--Taw-12.replit.app/api",
+  zakiyApiBaseUrl: "https://v-177--hadybash781.replit.app/api",
+  serverUrl: "https://v-177--hadybash781.replit.app/api/",
 } as const;
 
 export type ApiConfig = typeof API_CONFIG;

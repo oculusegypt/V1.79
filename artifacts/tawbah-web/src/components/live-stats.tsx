@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users } from "lucide-react";
+import { apiUrl } from "@/lib/api-base";
 
 interface LiveStats {
   today: {
@@ -50,7 +51,7 @@ export function LiveStats() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/stats/live");
+      const res = await fetch(apiUrl("/api/stats/live"));
       if (!res.ok) return;
       const data = await res.json();
       setStats(data);
@@ -134,7 +135,7 @@ export function LiveStats() {
 
 export async function recordEvent(eventType: "tawbah" | "dhikr" | "covenant" | "dua" | "quran") {
   try {
-    await fetch("/api/stats/event", {
+    await fetch(apiUrl("/api/stats/event"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventType }),

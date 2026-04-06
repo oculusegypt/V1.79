@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useCallback } from "react";
+import { Fragment, useState, useEffect, useCallback, useMemo } from "react";
 import { GripVertical, Settings2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppUserProgress } from "@/hooks/use-app-data";
@@ -16,6 +16,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
@@ -36,9 +37,77 @@ import { SECTION_LABELS } from "./list-sections";
 import { HomeHeroBar } from "./HomeHeroBar";
 import { SosReturnToast } from "./SosReturnToast";
 import { EidEntryCard } from "./EidEntryCard";
-import { DailyFocusCard } from "./DailyFocusCard";
 import { QuickAccessBar } from "./QuickAccessBar";
 import { SortableUnifiedItem } from "./SortableUnifiedItem";
+import { SectionHeader } from "./SectionHeader";
+import { Bot, BookOpen, Zap, CircleDot, Users } from "lucide-react";
+
+// Section organization for visual hierarchy
+const DEFAULT_PRIMARY_ITEMS = ["journey-card", "tawbah-card"] as const;
+const DEFAULT_DAILY_TOOLS = ["quran-card", "islamic-programs", "adhkar", "prayer-times", "notifications", "dhikr", "rajaa"] as const;
+const DEFAULT_GROWTH_ITEMS = ["journey30", "journal"] as const;
+const DEFAULT_COMMUNITY_ITEMS = ["dhikr-rooms"] as const;
+
+type HomeBucket = "primary" | "daily" | "growth" | "community";
+type HomeBucketOrOther = HomeBucket | "other";
+
+const HOME_BUCKET_KEY = "home_bucket_map_v1";
+
+function getDefaultBucket(id: SectionId): HomeBucketOrOther {
+  if ((DEFAULT_PRIMARY_ITEMS as readonly string[]).includes(id)) return "primary";
+  if ((DEFAULT_DAILY_TOOLS as readonly string[]).includes(id)) return "daily";
+  if ((DEFAULT_GROWTH_ITEMS as readonly string[]).includes(id)) return "growth";
+  if ((DEFAULT_COMMUNITY_ITEMS as readonly string[]).includes(id)) return "community";
+  return "other";
+}
+
+function isBucketId(id: unknown): id is `bucket:${HomeBucket}` {
+  return typeof id === "string" && id.startsWith("bucket:");
+}
+
+function parseBucketId(id: `bucket:${HomeBucket}`): HomeBucket {
+  return id.split(":")[1] as HomeBucket;
+}
+
+function getBucketForItem(id: SectionId, bucketMap: Partial<Record<SectionId, HomeBucket>>): HomeBucketOrOther {
+  return bucketMap[id] ?? getDefaultBucket(id);
+}
+
+function moveItemToBucketEnd({
+  order,
+  activeId,
+  targetBucket,
+  bucketMap,
+}: {
+  order: SectionId[];
+  activeId: SectionId;
+  targetBucket: HomeBucket;
+  bucketMap: Partial<Record<SectionId, HomeBucket>>;
+}): SectionId[] {
+  const without = order.filter((x) => x !== activeId);
+  const lastIdxInBucket = (() => {
+    for (let i = without.length - 1; i >= 0; i--) {
+      const id = without[i]!;
+      if (getBucketForItem(id, bucketMap) === targetBucket) return i;
+    }
+    return -1;
+  })();
+
+  const insertAt = lastIdxInBucket === -1 ? without.length : lastIdxInBucket + 1;
+  const next = [...without.slice(0, insertAt), activeId, ...without.slice(insertAt)];
+  return next;
+}
+
+function BucketDroppable({
+  bucket,
+  children,
+}: {
+  bucket: HomeBucket;
+  children: (opts: { isOver: boolean }) => React.ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: `bucket:${bucket}` as const });
+  return <div ref={setNodeRef}>{children({ isOver })}</div>;
+}
 
 export default function Home() {
   const { isLoading } = useAppUserProgress();
@@ -46,6 +115,30 @@ export default function Home() {
   const [showSosToast, setShowSosToast] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
+
+  const [bucketMap, setBucketMap] = useState<Partial<Record<SectionId, HomeBucket>>>(() => {
+    try {
+      const raw = localStorage.getItem(HOME_BUCKET_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Partial<Record<string, HomeBucket>>;
+      const next: Partial<Record<SectionId, HomeBucket>> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === "string" && (v === "primary" || v === "daily" || v === "growth" || v === "community")) {
+          next[k as SectionId] = v;
+        }
+      }
+      return next;
+    } catch {
+      return {};
+    }
+  });
+
+  const persistBucketMap = useCallback((next: Partial<Record<SectionId, HomeBucket>>) => {
+    setBucketMap(next);
+    try {
+      localStorage.setItem(HOME_BUCKET_KEY, JSON.stringify(next));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (decision?.urgency === "emergency") {
@@ -56,6 +149,64 @@ export default function Home() {
   const [combinedOrder, setCombinedOrder] =
     useState<SectionId[]>(loadCombinedOrder);
   const [activeId, setActiveId] = useState<SectionId | null>(null);
+
+  const HOME_SECTIONS = useMemo(
+    () =>
+      [
+        {
+          id: "primary" as const,
+          title: "الأهم",
+          icon: <Bot size={16} />,
+          subtitle: "محادثة الزكي والورد اليومي",
+          containerClassName:
+            "bg-card/50 rounded-3xl p-5 shadow-sm border border-border/30",
+        },
+        {
+          id: "daily" as const,
+          title: "أدواتك اليومية",
+          icon: <CircleDot size={16} />,
+          subtitle: "أذكار • صلاة • قرآن",
+          containerClassName:
+            "bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20",
+        },
+        {
+          id: "growth" as const,
+          title: "النمو والمحتوى",
+          icon: <BookOpen size={16} />,
+          subtitle: "برامج • يوميات • تلاوات",
+          containerClassName:
+            "bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20",
+        },
+        {
+          id: "community" as const,
+          title: "المجتمع والمزيد",
+          icon: <Users size={16} />,
+          subtitle: undefined,
+          containerClassName:
+            "bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20",
+        },
+      ] as const,
+    [],
+  );
+
+  const itemsBySection = useMemo(() => {
+    const primary: SectionId[] = [];
+    const daily: SectionId[] = [];
+    const growth: SectionId[] = [];
+    const community: SectionId[] = [];
+    const other: SectionId[] = [];
+
+    for (const id of combinedOrder) {
+      const bucket = getBucketForItem(id, bucketMap);
+      if (bucket === "primary") primary.push(id);
+      else if (bucket === "daily") daily.push(id);
+      else if (bucket === "growth") growth.push(id);
+      else if (bucket === "community") community.push(id);
+      else other.push(id);
+    }
+
+    return { primary, daily, growth, community, other };
+  }, [combinedOrder, bucketMap]);
 
   useEffect(() => {
     try {
@@ -80,16 +231,64 @@ export default function Home() {
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
-    if (over && active.id !== over.id) {
+    if (!over) return;
+
+    const activeItem = active.id as SectionId;
+    const overId = over.id;
+    const currentBucket = getBucketForItem(activeItem, bucketMap);
+
+    const targetBucket: HomeBucketOrOther = (() => {
+      if (isBucketId(overId)) return parseBucketId(overId);
+      if (typeof overId === "string") {
+        return getBucketForItem(overId as SectionId, bucketMap);
+      }
+      return "other";
+    })();
+
+    if (targetBucket !== "other" && currentBucket !== targetBucket) {
+      const nextBucketMap: Partial<Record<SectionId, HomeBucket>> = {
+        ...bucketMap,
+        [activeItem]: targetBucket,
+      };
+      persistBucketMap(nextBucketMap);
+
       setCombinedOrder((prev) => {
-        const oldIndex = prev.indexOf(active.id as SectionId);
-        const newIndex = prev.indexOf(over.id as SectionId);
+        // If dropped on a bucket container, append to end of that bucket segment.
+        if (isBucketId(overId)) {
+          const next = moveItemToBucketEnd({
+            order: prev,
+            activeId: activeItem,
+            targetBucket,
+            bucketMap: nextBucketMap,
+          });
+          saveCombinedOrder(next);
+          return next;
+        }
+
+        // Dropped on an item: normal reordering.
+        const oldIndex = prev.indexOf(activeItem);
+        const newIndex = prev.indexOf(overId as SectionId);
+        if (oldIndex === -1 || newIndex === -1) return prev;
+        const next = arrayMove(prev, oldIndex, newIndex);
+        saveCombinedOrder(next);
+        return next;
+      });
+
+      return;
+    }
+
+    // Same bucket: normal reorder if dropped on another item
+    if (active.id !== overId && !isBucketId(overId)) {
+      setCombinedOrder((prev) => {
+        const oldIndex = prev.indexOf(activeItem);
+        const newIndex = prev.indexOf(overId as SectionId);
+        if (oldIndex === -1 || newIndex === -1) return prev;
         const next = arrayMove(prev, oldIndex, newIndex);
         saveCombinedOrder(next);
         return next;
       });
     }
-  }, []);
+  }, [bucketMap, persistBucketMap]);
 
   if (isLoading) {
     return (
@@ -123,7 +322,7 @@ export default function Home() {
             <IslamicHero />
             <HomeHeroBar />
           </div>
-          <div className="px-5 relative z-10 flex flex-col gap-4 pl-[7px] pr-[7px] mt-[-88px]">
+          <div className="px-4 relative z-10 flex flex-col gap-5 mt-[-88px]">
             {/* Quick Access Bar */}
             <QuickAccessBar />
 
@@ -131,9 +330,6 @@ export default function Home() {
 
             {/* Mood Selector */}
             <MoodSelector />
-
-            {/* Daily Focus Card */}
-            <DailyFocusCard />
 
             {/* Edit mode banner */}
             <AnimatePresence>
@@ -162,7 +358,7 @@ export default function Home() {
               )}
             </AnimatePresence>
 
-            {/* Unified sortable section */}
+            {/* Unified sortable section with section headers */}
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -173,23 +369,73 @@ export default function Home() {
                 items={combinedOrder}
                 strategy={rectSortingStrategy}
               >
-                <div className="flex flex-wrap gap-3">
-                  {combinedOrder.map((id) => (
-                    <Fragment key={id}>
-                      {id === "tawbah-card" && (
-                        <div className="w-full">
-                          <KnowledgeSlider />
-                        </div>
-                      )}
-                      <div
-                        className={
-                          isGridItem(id) ? "w-[calc(50%-6px)]" : "w-full"
-                        }
-                      >
-                        <SortableUnifiedItem id={id} editMode={editMode} />
+                <div className="flex flex-col gap-8">
+                  {HOME_SECTIONS.map((section) => {
+                    const ids =
+                      section.id === "primary"
+                        ? itemsBySection.primary
+                        : section.id === "daily"
+                          ? itemsBySection.daily
+                          : section.id === "growth"
+                            ? itemsBySection.growth
+                            : itemsBySection.community;
+
+                    const isGridish = section.id === "daily" || section.id === "community";
+
+                    return (
+                      <BucketDroppable key={section.id} bucket={section.id}>
+                        {({ isOver }) => (
+                          <section
+                            className={section.containerClassName}
+                            style={
+                              editMode && isOver
+                                ? {
+                                    outline: "2px dashed hsl(var(--primary)/0.45)",
+                                    outlineOffset: 6,
+                                  }
+                                : undefined
+                            }
+                          >
+                            <SectionHeader
+                              title={section.title}
+                              icon={section.icon}
+                              subtitle={section.subtitle}
+                            />
+                            <div className={isGridish ? "flex flex-wrap gap-3" : "flex flex-col gap-3"}>
+                              {ids.map((id) => (
+                                <div
+                                  key={id}
+                                  className={
+                                    isGridish && isGridItem(id)
+                                      ? "w-[calc(50%-6px)]"
+                                      : "w-full"
+                                  }
+                                >
+                                  <SortableUnifiedItem id={id} editMode={editMode} />
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+                        )}
+                      </BucketDroppable>
+                    );
+                  })}
+
+                  {itemsBySection.other.length > 0 && (
+                    <section className="bg-card/30 rounded-3xl p-5 shadow-sm border border-border/20">
+                      <SectionHeader title="أخرى" icon={<Zap size={16} />} />
+                      <div className="flex flex-wrap gap-3">
+                        {itemsBySection.other.map((id) => (
+                          <div
+                            key={id}
+                            className={isGridItem(id) ? "w-[calc(50%-6px)]" : "w-full"}
+                          >
+                            <SortableUnifiedItem id={id} editMode={editMode} />
+                          </div>
+                        ))}
                       </div>
-                    </Fragment>
-                  ))}
+                    </section>
+                  )}
                 </div>
               </SortableContext>
 

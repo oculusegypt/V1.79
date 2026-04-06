@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Zap, Globe, Star, TrendingUp, CheckCircle, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { getSessionId } from "@/lib/session";
+import { apiUrl } from "@/lib/api-base";
 import { Link } from "wouter";
 
 interface Room {
@@ -199,7 +201,7 @@ function RoomCard({ room, rank }: { room: Room; rank: number }) {
 
   const tapMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/dhikr-rooms/${room.type}/tap`, { method: "POST" });
+      const res = await fetch(apiUrl(`/api/dhikr-rooms/${room.type}/tap`), { method: "POST" });
       return res.json();
     },
     onSuccess: (data) => {
@@ -395,7 +397,7 @@ export default function DhikrRooms() {
   const { data, isLoading } = useQuery<{ rooms: Room[] }>({
     queryKey: ["dhikr-rooms"],
     queryFn: async () => {
-      const res = await fetch("/api/dhikr-rooms");
+      const res = await fetch(apiUrl("/api/dhikr-rooms"));
       return res.json();
     },
     refetchInterval: 8000,

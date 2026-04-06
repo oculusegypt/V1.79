@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, BookOpen, Play, Square, RotateCcw, X } from "lucide-react";
+import { setAudioSrc } from "@/lib/native-audio";
+import { getApiBase } from "@/lib/api-base";
 import { toArabicIndic, toGlobalAyah as _toGlobalAyah } from "../utils";
 
 export function parseIstighfarCount(task: string): number {
@@ -205,11 +207,13 @@ function QuranPagePanel({ page, onClose }: { page: number; onClose: () => void }
     const pre = preloadRef.current;
     pre.pause();
     pre.preload = "auto";
-    pre.src = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${_toGlobalAyah(ayah.surah.number, ayah.numberInSurah)}.mp3`;
-    pre.load();
+    const url = `${getApiBase()}/audio-proxy/quran/ar.alafasy/${_toGlobalAyah(ayah.surah.number, ayah.numberInSurah)}.mp3`;
+    void setAudioSrc(pre, url).then(() => {
+      pre.load();
+      pre.volume = 0;
+      pre.play().then(() => { pre.pause(); pre.currentTime = 0; pre.volume = 1; }).catch(() => { pre.volume = 1; });
+    }).catch(() => {});
     preloadedIdxRef.current = idx;
-    pre.volume = 0;
-    pre.play().then(() => { pre.pause(); pre.currentTime = 0; pre.volume = 1; }).catch(() => { pre.volume = 1; });
   };
 
   const playFromIdx = (idx: number) => {

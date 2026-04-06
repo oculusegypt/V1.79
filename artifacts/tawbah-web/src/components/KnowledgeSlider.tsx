@@ -1,13 +1,73 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, MessageCircle, Star, Sparkles, Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, MessageCircle, Star, Sun, Moon, Sparkles, ChevronRight, ChevronLeft, Mic2 } from "lucide-react";
+import { apiUrl } from "@/lib/api-base";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface KnowledgeItem {
-  type: "ayah" | "hadith" | "dhikr" | "nafl" | "dua" | "wisdom";
+  type: "ayah" | "hadith" | "dhikr" | "nafl" | "dua" | "wisdom" | "podcast";
   text: string;
   source?: string;
+  categoryTitle?: string;
+  episodeId?: string;
+  mediaUrl?: string;
+  imageUrl?: string;
+}
+
+// Podcast categories data (mirrored from islamic-programs.tsx)
+const PODCAST_CATEGORIES_DATA = [
+  { id: "ala-khuta", title: "علي خطي الرسول", color: "#064e3b", colorTo: "#065f46" },
+  { id: "shrfat", title: "شرفات", color: "#0891b2", colorTo: "#06b6d4" },
+  { id: "mtka", title: "مُتكأ", color: "#7c3aed", colorTo: "#8b5cf6" },
+  { id: "alwan", title: "أَلوان", color: "#be185d", colorTo: "#f472b6" },
+];
+
+const PODCAST_EPISODES_DATA = [
+  { catId: "ala-khuta", episodes: [
+    { id: "yom-alfrkan", title: "يوم الفرقان", imageUrl: "https://islamicaudio.net/assets/media/yom-alfrkan1017_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/yom-alfrkan866.mp3" },
+    { id: "hkm-alamyn", title: "حكم الأمين", imageUrl: "https://islamicaudio.net/assets/media/hkm-alamyn1029_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/hkm-alamyn871.mp3" },
+    { id: "fth-mka", title: "فتح مكة", imageUrl: "https://islamicaudio.net/assets/media/fth-mk1020_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/fth-mk868.mp3" },
+    { id: "slh-alhdyby", title: "صلح الحديبية", imageUrl: "https://islamicaudio.net/assets/media/slh-alhdyby1022_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/slh-alhdyby874.mp3" },
+    { id: "mhajron-oansar", title: "مهاجرون وأنصار", imageUrl: "https://islamicaudio.net/assets/media/mhajron-oansar1021_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/mhajron-oansar864.mp3" },
+  ]},
+  { catId: "shrfat", episodes: [
+    { id: "ep1", title: "قصص ملهمة من شرفات", imageUrl: "https://islamicaudio.net/ar/media/show/1314", mediaUrl: "" },
+    { id: "ep2", title: "شخصيات غيرت العالم", imageUrl: "https://islamicaudio.net/ar/media/show/1314", mediaUrl: "" },
+  ]},
+  { catId: "mtka", episodes: [
+    { id: "ep1", title: "قصص أعلام النبلاء", imageUrl: "https://islamicaudio.net/ar/media/show/1313", mediaUrl: "" },
+    { id: "ep2", title: "تاريخ وحاضر", imageUrl: "https://islamicaudio.net/ar/media/show/1313", mediaUrl: "" },
+  ]},
+  { catId: "alwan", episodes: [
+    { id: "aabd-allh-batrsby", title: "عبد الله باترسبي", imageUrl: "https://islamicaudio.net/assets/media/aroan-002725_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/02-aabd-allh-batrsby-aaaly-aldk827.mp3" },
+    { id: "ayfon-rydly", title: "إيفون ريدلي", imageUrl: "https://islamicaudio.net/assets/media/aroan-011734_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/11-ayfon-rydly-aaaly-aldk818.mp3" },
+    { id: "kolz", title: "فيرونيك كولز", imageUrl: "https://islamicaudio.net/assets/media/aroan-010733_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/10-kolz-aaaly-aldk819.mp3" },
+    { id: "malma", title: "مالما", imageUrl: "https://islamicaudio.net/assets/media/aroan-005728_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/05-malma-aaaly-aldk824.mp3" },
+    { id: "danyal-mor", title: "دانيال مور", imageUrl: "https://islamicaudio.net/assets/media/aroan-003726_mediumThumb.jpg", mediaUrl: "https://islamicaudio.net/assets/media/03-danyal-mor-aaaly-aldk826.mp3" },
+  ]},
+];
+
+// Build podcast items from all categories
+function getPodcastItems(): KnowledgeItem[] {
+  const items: KnowledgeItem[] = [];
+  PODCAST_CATEGORIES_DATA.forEach(cat => {
+    const catData = PODCAST_EPISODES_DATA.find(c => c.catId === cat.id);
+    if (catData) {
+      catData.episodes.forEach(ep => {
+        items.push({
+          type: "podcast",
+          text: ep.title,
+          source: cat.title,
+          categoryTitle: cat.title,
+          episodeId: `${cat.id}:${ep.id}`,
+          mediaUrl: ep.mediaUrl,
+          imageUrl: ep.imageUrl,
+        });
+      });
+    }
+  });
+  return items;
 }
 
 const TYPE_META: Record<KnowledgeItem["type"], { label: string; icon: React.ReactNode; bg: string; text: string }> = {
@@ -17,6 +77,7 @@ const TYPE_META: Record<KnowledgeItem["type"], { label: string; icon: React.Reac
   nafl:    { label: "نافلة وسنة", icon: <Sun size={11} />,           bg: "bg-sky-500/15 dark:bg-sky-400/15",        text: "text-sky-600 dark:text-sky-400"       },
   dua:     { label: "دعاء مأثور", icon: <Moon size={11} />,          bg: "bg-purple-500/15 dark:bg-purple-400/15",  text: "text-purple-600 dark:text-purple-400" },
   wisdom:  { label: "نصيحة",      icon: <Sparkles size={11} />,     bg: "bg-rose-500/15 dark:bg-rose-400/15",      text: "text-rose-600 dark:text-rose-400"     },
+  podcast: { label: "بودكاست",    icon: <Mic2 size={11} />,          bg: "bg-cyan-500/15 dark:bg-cyan-400/15",      text: "text-cyan-600 dark:text-cyan-400"     },
 };
 
 // ── Cache helpers ─────────────────────────────────────────────────────────────
@@ -77,16 +138,38 @@ export function KnowledgeSlider() {
       return;
     }
     try {
-      const res = await fetch("/api/hero-content");
+      const res = await fetch(apiUrl("/api/hero-content"));
       if (!res.ok) throw new Error("failed");
       const data = await res.json() as { items: KnowledgeItem[] };
-      const list = data.items?.length ? data.items : FALLBACK;
+      let list = data.items?.length ? data.items : FALLBACK;
+      
+      // Add podcast items to the list for random display
+      const podcastItems = getPodcastItems();
+      if (podcastItems.length > 0) {
+        // Shuffle podcast items using Fisher-Yates
+        const shuffled = [...podcastItems];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        // Take up to 4 random podcast episodes
+        list = [...list, ...shuffled.slice(0, 4)];
+        // Shuffle the combined list
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [list[i], list[j]] = [list[j], list[i]];
+        }
+      }
+      
       saveCache(list);
       setItems(list);
       setIdx(getDailyStartIdx(list.length));
     } catch {
-      setItems(FALLBACK);
-      setIdx(getDailyStartIdx(FALLBACK.length));
+      // On error, still include podcast items with fallback
+      const podcastItems = getPodcastItems();
+      const combined = [...FALLBACK, ...podcastItems.slice(0, 4)];
+      setItems(combined);
+      setIdx(getDailyStartIdx(combined.length));
     } finally {
       setLoading(false);
     }

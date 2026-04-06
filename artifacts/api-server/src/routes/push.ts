@@ -71,9 +71,9 @@ async function sendFcmNotification(token: string, title: string, body: string, u
 // GET /push/vapid-public-key
 router.get("/vapid-public-key", (_req, res) => {
   if (!VAPID_PUBLIC_KEY) {
-    return res.status(503).json({ error: "VAPID not configured" });
+    return res.json({ key: "", configured: false });
   }
-  return res.json({ key: VAPID_PUBLIC_KEY });
+  return res.json({ key: VAPID_PUBLIC_KEY, configured: true });
 });
 
 // POST /push/subscribe

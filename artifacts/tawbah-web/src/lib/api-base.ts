@@ -14,51 +14,70 @@ export function isNativeApp(): boolean {
   try {
     return Capacitor.isNativePlatform();
   } catch {
-    return typeof window !== "undefined" &&
+    return (
+      typeof window !== "undefined" &&
       typeof window.Capacitor !== "undefined" &&
-      window.Capacitor.isNativePlatform();
+      window.Capacitor.isNativePlatform()
+    );
   }
 }
 
 export function getApiBase(): string {
-  const fromEnv = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  if (fromEnv) return fromEnv;
-  const stored = typeof localStorage !== "undefined"
-    ? localStorage.getItem("tawbah_api_base")
-    : null;
-  if (stored) return stored;
-
   if (isNativeApp()) {
+    const fromEnv = import.meta.env.VITE_API_BASE_URL as string | undefined;
+    if (fromEnv) return fromEnv;
+    const stored =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("tawbah_api_base")
+        : null;
+    if (stored) return stored;
     return API_CONFIG.serverUrl;
   }
 
-  // Web fallback: prefer same-origin to keep auth cookies first-party and avoid CORS.
-  return typeof window !== "undefined" ? `${window.location.origin}/api` : API_CONFIG.serverUrl;
+  return "/api";
 }
 
-export function getZakiyApiBase(): string {
+export function getAiBase(): string {
   const fromEnv = import.meta.env.VITE_ZAKIY_API_BASE_URL as string | undefined;
   if (fromEnv) return fromEnv;
-  const stored = typeof localStorage !== "undefined"
-    ? localStorage.getItem("tawbah_zakiy_api_base")
-    : null;
+
+  const stored =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("tawbah_zakiy_api_base")
+      : null;
   if (stored) return stored;
 
-  if (isNativeApp()) {
-    return API_CONFIG.serverUrl;
+  return API_CONFIG.zakiyApiBaseUrl;
+}
+
+function joinUrl(base: string, path: string): string {
+  const b = base.replace(/\/+$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+
+  if (b.endsWith("/api") && p.startsWith("/api/")) {
+    return `${b}${p.slice(4)}`;
   }
 
-  // Web fallback: same-origin proxy (avoids CORS and keeps cookies first-party)
-  return typeof window !== "undefined" ? `${window.location.origin}/api` : API_CONFIG.serverUrl;
+  if (b.endsWith("/api") && p === "/api") {
+    return b;
+  }
+
+  return `${b}${p}`;
 }
 
 export function apiUrl(path: string): string {
-  const base = getApiBase();
-  if (!path) return base;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  if (base.endsWith("/") && path.startsWith("/")) return base + path.slice(1);
-  if (!base.endsWith("/") && !path.startsWith("/")) return `${base}/${path}`;
-  return base + path;
+  if (!isNativeApp()) {
+    return path;
+  }
+
+  if (/^https?:\/\//i.test(path)) return path;
+
+  return joinUrl(getApiBase(), path);
+}
+
+export function aiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  return joinUrl(getAiBase(), path);
 }
 
 export const API_BASE = getApiBase();

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSessionId } from "@/lib/session";
-import { isNativeApp } from "@/lib/api-base";
+import { apiUrl, isNativeApp } from "@/lib/api-base";
 import { getAuthHeader } from "@/lib/auth-client";
 import { getMockUserProgress, getMockHabits, getMockDhikrCount } from "@/lib/mock-api";
 import { useAuth } from "@/context/AuthContext";
@@ -33,7 +33,7 @@ export function useAppUserProgress() {
     queryFn: async () => {
       const sessionId = getSessionId();
       try {
-        const res = await fetchWithTimeout(`/api/user/progress?sessionId=${encodeURIComponent(sessionId)}`);
+        const res = await fetchWithTimeout(apiUrl(`/api/user/progress?sessionId=${encodeURIComponent(sessionId)}`));
         if (!res.ok) {
           if (res.status === 404) return null;
           throw new Error("Failed to fetch user progress");
@@ -57,7 +57,7 @@ export function useAppHabits() {
       const sessionId = getSessionId();
       const today = new Date().toISOString().split('T')[0];
       try {
-        const res = await fetchWithTimeout(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${today}`);
+        const res = await fetchWithTimeout(apiUrl(`/api/habits?sessionId=${encodeURIComponent(sessionId)}&date=${today}`));
         if (!res.ok) throw new Error("Failed to fetch habits");
         return res.json() as Promise<HabitEntry[]>;
       } catch (e) {
@@ -77,7 +77,7 @@ export function useAppDhikrCount() {
       const sessionId = getSessionId();
       const today = new Date().toISOString().split('T')[0];
       try {
-        const res = await fetchWithTimeout(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${today}`);
+        const res = await fetchWithTimeout(apiUrl(`/api/dhikr/count?sessionId=${encodeURIComponent(sessionId)}&date=${today}`));
         if (!res.ok) throw new Error("Failed to fetch dhikr count");
         return res.json() as Promise<DhikrCount>;
       } catch (e) {
@@ -100,7 +100,7 @@ export function useAppUpdateProgress() {
         ...data,
         sessionId: getSessionId(),
       };
-      const res = await fetch(`/api/user/progress`, {
+      const res = await fetch(apiUrl(`/api/user/progress`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -122,7 +122,7 @@ export function useAppCreateCovenant() {
         ...data,
         sessionId: getSessionId(),
       };
-      const res = await fetch(`/api/user/covenant`, {
+      const res = await fetch(apiUrl(`/api/user/covenant`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -144,7 +144,7 @@ export function useAppCompleteHabit() {
         ...data,
         sessionId: getSessionId(),
       };
-      const res = await fetch(`/api/habits`, {
+      const res = await fetch(apiUrl(`/api/habits`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -168,11 +168,22 @@ export interface UserJourney {
 
 export function useUserJourney() {
   const { user } = useAuth();
+  // Also check localStorage for persisted user
+  const localStorageUser = (() => {
+    try {
+      const stored = localStorage.getItem("tawbah_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const effectiveUser = user ?? localStorageUser;
+  
   return useQuery<UserJourney | null>({
     queryKey: ["/api/user/journey"],
     queryFn: async () => {
       try {
-        const res = await fetchWithTimeout("/api/user/journey", {
+        const res = await fetchWithTimeout(apiUrl("/api/user/journey"), {
           credentials: "include",
           headers: { ...getAuthHeader() },
         });
@@ -182,7 +193,7 @@ export function useUserJourney() {
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!effectiveUser,
     staleTime: 1000 * 60 * 2,
     retry: 1,
   });
@@ -196,7 +207,7 @@ export function useAppIncrementDhikr() {
         ...data,
         sessionId: getSessionId(),
       };
-      const res = await fetch(`/api/dhikr/increment`, {
+      const res = await fetch(apiUrl(`/api/dhikr/increment`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
