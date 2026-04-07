@@ -137,17 +137,17 @@ function Router() {
           <Route path="/garden" component={Garden} />
           <Route path="/munajat" component={Munajat} />
           <Route path="/adhkar" component={Adhkar} />
-          <Route path="/quran/read" component={QuranReadPage} />
-          <Route path="/quran/listen" component={QuranListenPage} />
-          <Route path="/quran/memorize" component={QuranMemorizePage} />
-          <Route path="/quran/tafsir" component={QuranTafsirPage} />
-          <Route path="/quran/khatma" component={QuranKhatmaPage} />
-          <Route path="/quran/challenges" component={QuranChallengesPage} />
-          <Route path="/quran/map" component={QuranMapPage} />
-          <Route path="/quran/ai" component={QuranAiPage} />
-          <Route path="/quran/cards" component={QuranCardsPage} />
-          <Route path="/quran/miracles" component={QuranMiraclesPage} />
-          <Route path="/quran/khatmat" component={QuranKhatmatPage} />
+          <Route path="/quran/read">{() => <QuranReadPage />}</Route>
+          <Route path="/quran/listen">{() => <QuranListenPage />}</Route>
+          <Route path="/quran/memorize">{() => <QuranMemorizePage />}</Route>
+          <Route path="/quran/tafsir">{() => <QuranTafsirPage />}</Route>
+          <Route path="/quran/khatma">{() => <QuranKhatmaPage />}</Route>
+          <Route path="/quran/challenges">{() => <QuranChallengesPage />}</Route>
+          <Route path="/quran/map">{() => <QuranMapPage />}</Route>
+          <Route path="/quran/ai">{() => <QuranAiPage />}</Route>
+          <Route path="/quran/cards">{() => <QuranCardsPage />}</Route>
+          <Route path="/quran/miracles">{() => <QuranMiraclesPage />}</Route>
+          <Route path="/quran/khatmat">{() => <QuranKhatmatPage />}</Route>
           <Route path="/quran" component={QuranPage} />
           <Route component={NotFound} />
         </Switch>

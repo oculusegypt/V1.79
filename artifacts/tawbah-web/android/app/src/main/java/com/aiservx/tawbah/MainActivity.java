@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -17,6 +18,18 @@ public class MainActivity extends BridgeActivity {
     setTheme(R.style.AppTheme_NoActionBar);
     registerPlugin(SystemBarsPlugin.class);
     super.onCreate(savedInstanceState);
+
+    // Configure WebView to fill screen properly in landscape
+    this.init(
+        savedInstanceState,
+        config -> {
+          config.getWebView().getSettings().setUseWideViewPort(true);
+          config.getWebView().getSettings().setLoadWithOverviewMode(true);
+          config.getWebView().getSettings().setAllowFileAccess(true);
+          config.getWebView().getSettings().setAllowContentAccess(true);
+        }
+    );
+
     // Show status bar and navigation bar
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       final WindowInsetsController controller = getWindow().getInsetsController();

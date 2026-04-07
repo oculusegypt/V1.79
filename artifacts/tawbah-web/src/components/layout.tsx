@@ -160,7 +160,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className={cn("min-h-[100dvh] flex flex-col bg-background relative max-w-md mx-auto shadow-2xl shadow-black/5 ring-1 ring-border/50", !isSos && !isZakiy && "pb-[80px]")}
+      className={cn(
+        "min-h-[100dvh] flex flex-col bg-background relative w-full",
+        !isSos && !isZakiy && "pb-[80px]",
+      )}
       style={{ overflowX: "clip" }}
     >
       <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none -z-10" />
