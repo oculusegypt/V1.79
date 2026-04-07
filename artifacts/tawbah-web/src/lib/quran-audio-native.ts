@@ -1,6 +1,6 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNativeApp, getApiBase } from "@/lib/api-base";
-import { getSurahName } from "@/lib/surah-name-map";
+import { getSurahName, getSurahIdByName } from "@/lib/surah-name-map";
 
 const AUDIO_ROOT_DIR = "Tawbah-Quran";
 const AUDIO_DIR = `${AUDIO_ROOT_DIR}/audio`;
@@ -38,7 +38,8 @@ function getProxyUrl(source: QuranAudioSource): string {
 
 function getLocalPath(source: QuranAudioSource): string {
   const globalAyah = toGlobalAyah(source.surahId, source.ayahNum);
-  return `${AUDIO_DIR}/${source.reciterId}/${source.surahId}/${globalAyah}.mp3`;
+  const surahFolderName = getSurahName(source.surahId, 'ar');
+  return `${AUDIO_DIR}/${source.reciterId}/${surahFolderName}/${globalAyah}.mp3`;
 }
 
 function getLegacyLocalPath(source: QuranAudioSource): string {
@@ -98,7 +99,8 @@ export async function preloadQuranVerseNative(source: QuranAudioSource): Promise
       });
       const data = typeof legacyBase64.data === "string" ? legacyBase64.data : "";
       if (data) {
-        const dirPath = `${AUDIO_DIR}/${source.reciterId}/${source.surahId}`;
+        const surahFolderName = getSurahName(source.surahId, 'ar');
+        const dirPath = `${AUDIO_DIR}/${source.reciterId}/${surahFolderName}`;
         try {
           await Filesystem.mkdir({
             path: dirPath,
@@ -131,7 +133,8 @@ export async function preloadQuranVerseNative(source: QuranAudioSource): Promise
         new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
       );
 
-      const dirPath = `${AUDIO_DIR}/${source.reciterId}/${source.surahId}`;
+      const surahFolderName = getSurahName(source.surahId, 'ar');
+      const dirPath = `${AUDIO_DIR}/${source.reciterId}/${surahFolderName}`;
       try {
         await Filesystem.mkdir({
           path: dirPath,
@@ -247,8 +250,8 @@ export async function getCachedAudioCount(): Promise<number> {
         const surahList = surahDirs as unknown as Array<{ name: string; type: string }>;
         for (const surahDir of surahList) {
           if (surahDir.type !== "directory") continue;
-          const surahId = parseInt(surahDir.name, 10);
-          const surahName = getSurahName(surahId, 'en');
+          const surahName = surahDir.name;
+          const surahId = getSurahIdByName(surahName, 'ar');
           const audioFiles = await Filesystem.readdir({
             path: `${AUDIO_DIR}/${dir.name}/${surahDir.name}`,
             directory: AUDIO_DIRECTORY,
@@ -256,7 +259,7 @@ export async function getCachedAudioCount(): Promise<number> {
           const audioList = audioFiles as unknown as Array<{ name: string }>;
           const fileCount = audioList.filter((f: { name: string }) => f.name.endsWith(".mp3")).length;
           if (fileCount > 0) {
-            console.log(`[AudioCache] ${surahName} (${surahId}): ${fileCount} verses`);
+            console.log(`[AudioCache] ${surahName} (${surahId || 'unknown'}): ${fileCount} verses`);
           }
           count += fileCount;
         }

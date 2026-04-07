@@ -240,3 +240,18 @@ export function getSurahName(id: number, lang: 'en' | 'ar' = 'en'): string {
 export function getSurahNames(lang: 'en' | 'ar' = 'en'): Record<number, string> {
   return lang === 'ar' ? SURAH_NAMES_AR : SURAH_NAMES;
 }
+
+// Helper functions for name-to-ID conversion
+export function getSurahIdByName(name: string, lang: 'en' | 'ar' = 'en'): number | null {
+  const names = lang === 'ar' ? SURAH_NAMES_AR : SURAH_NAMES;
+  for (const [id, surahName] of Object.entries(names)) {
+    if (surahName === name) {
+      return parseInt(id, 10);
+    }
+  }
+  return null;
+}
+
+export function getSurahFolderName(surahId: number, lang: 'en' | 'ar' = 'ar'): string {
+  return getSurahName(surahId, lang);
+}
