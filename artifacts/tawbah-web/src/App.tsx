@@ -58,7 +58,7 @@ const ProgramDetail = lazy(() => import("@/pages/program-detail"));
 const PodcastCategory = lazy(() => import("@/pages/podcast-category"));
 const Munajat = lazy(() => import("@/pages/munajat"));
 const Adhkar = lazy(() => import("@/pages/adhkar"));
-const QuranPage = lazy(() => import("@/pages/quran"));
+const QuranPage = lazy(() => import("@/pages/quran/index"));
 const QuranReadPage = lazy(() => import("@/pages/quran/read"));
 const QuranListenPage = lazy(() => import("@/pages/quran/listen"));
 const QuranMemorizePage = lazy(() => import("@/pages/quran/memorize"));
