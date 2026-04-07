@@ -25,8 +25,14 @@ import { Link } from "wouter";
 import { StandardHeader } from "@/components/header/StandardHeader";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
-import { preloadQuranVerseFast, getAudioUrlDirect, type QuranAudioSource } from "@/lib/quran-audio";
-import { preloadQuranVerseNative, getCachedAudioUrlNative } from "@/lib/quran-audio-native";
+import {
+  getAudioUrlDirect,
+  getCachedAudioUrl,
+  preloadQuranVerseFast,
+  preloadQuranVerseForCache,
+  type QuranAudioSource,
+} from "@/lib/quran-audio";
+import { getCachedAudioUrlNative, preloadQuranVerseNative } from "@/lib/quran-audio-native";
 import { setAudioSrc } from "@/lib/native-audio";
 
 // ─── Audio helpers ─────────────────────────────────────────────────────────────
@@ -1398,7 +1404,17 @@ function MushafDisplay({
       if (!ayah) return;
 
       const source: QuranAudioSource = { surahId, ayahNum: ayah.numberInSurah, reciterId };
-      let audioUrl = isNativeApp() ? await getCachedAudioUrlNative(source) : getAudioUrlDirect(source);
+      // Persist for offline on every play.
+      if (isNativeApp()) {
+        void preloadQuranVerseNative(source);
+      } else {
+        void preloadQuranVerseForCache(source);
+      }
+
+      let audioUrl = isNativeApp() ? await getCachedAudioUrlNative(source) : await getCachedAudioUrl(source);
+      if (!audioUrl) {
+        audioUrl = getAudioUrlDirect(source);
+      }
 
       if (!audioRef.current) audioRef.current = new Audio();
       const audio = audioRef.current;

@@ -7,8 +7,11 @@ import {
 import { PageHeader } from "@/components/PageHeader";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
-import { preloadQuranVerseFast, getAudioUrlDirect, type QuranAudioSource } from "@/lib/quran-audio";
-import { preloadQuranVerseNative, getCachedAudioUrlNative } from "@/lib/quran-audio-native";
+import { setAudioSrc } from "@/lib/native-audio";
+import { useNotifications } from "@/context/NotificationsContext";
+import { getAudioUrlDirect, getCachedAudioUrl, preloadQuranVerseFast, type QuranAudioSource } from "@/lib/quran-audio";
+import { getCachedAudioUrlNative, preloadQuranVerseNative } from "@/lib/quran-audio-native";
+import { loadSurahFromCache, saveSurahToCache } from "@/lib/quran-surah-cache";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -203,6 +206,7 @@ function Player({ surah, reciterId }: { surah: Surah; reciterId: string }) {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
         parseSurah(data);
+        saveSurahToCache(surah.id, data);
         return;
       } catch (primaryErr) {
         console.warn("[Quran] Primary API failed, trying CDN fallback:", primaryErr);
@@ -214,7 +218,18 @@ function Player({ surah, reciterId }: { surah: Surah; reciterId: string }) {
         if (!r.ok) throw new Error(`CDN HTTP ${r.status}`);
         const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
         parseSurah(data);
+        saveSurahToCache(surah.id, data);
       } catch (fallbackErr) {
+        const cached = loadSurahFromCache(surah.id);
+        if (cached) {
+          try {
+            parseSurah(cached as { code: number; data: { ayahs: Ayah[] } });
+            console.warn("[Quran] Loaded surah from cache (offline mode)");
+            return;
+          } catch {
+            // ignore and fall through to error
+          }
+        }
         setError(`تعذّر تحميل السورة — تحقق من الاتصال بالإنترنت`);
         console.error("[Quran] CDN fallback also failed:", fallbackErr);
       }
@@ -282,9 +297,8 @@ function Player({ surah, reciterId }: { surah: Surah; reciterId: string }) {
     const audio = audioRef.current;
     audio.pause();
     const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
-    const audioUrl = isNativeApp()
-      ? await getCachedAudioUrlNative(source)
-      : getAudioUrlDirect(source);
+    let audioUrl = isNativeApp() ? await getCachedAudioUrlNative(source) : await getCachedAudioUrl(source);
+    if (!audioUrl) audioUrl = getAudioUrlDirect(source);
     audio.volume = 1;
     audio.onerror = () => {
       console.error("[Play] Audio load error for idx:", idx, "error:", audio.error);

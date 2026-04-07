@@ -5,8 +5,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { getApiBase, isNativeApp } from "@/lib/api-base";
 import { setAudioSrc } from "@/lib/native-audio";
-import { preloadQuranVerseFast, preloadQuranVerseForCache, getCachedAudioUrl, type QuranAudioSource } from "@/lib/quran-audio";
-import { preloadQuranVerseNative, getCachedAudioUrlNative } from "@/lib/quran-audio-native";
+import { preloadQuranVerseFast as preloadQuranVerse, getCachedAudioUrl, getAudioUrlDirect, type QuranAudioSource, preloadQuranVerseForCache } from "@/lib/quran-audio";
+import { getCachedAudioUrlNative, preloadQuranVerseNative } from "@/lib/quran-audio-native";
+import { loadSurahFromCache, saveSurahToCache } from "@/lib/quran-surah-cache";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -231,24 +232,54 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
     setAyahs([]);
     setPlayingIdx(null);
     setIsPlaying(false);
-    fetch(`${getApiBase()}/quran/surah/${surah.id}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.code === 200) {
-          let list: Ayah[] = data.data.ayahs;
-          if (surah.id !== 1 && surah.id !== 9) {
-            list = list.filter(a => !(a.numberInSurah === 1 && isBismillahOnly(a.text)));
-            if (list.length > 0 && list[0]) {
-              list[0] = { ...list[0], text: stripBismillahPrefix(list[0].text) };
-            }
-          }
-          setAyahs(list);
-        } else {
-          setError(`API error: ${data.code}`);
+    const parseSurah = (data: { code: number; data: { ayahs: Ayah[] } }) => {
+      if (data.code !== 200) throw new Error(`API error: ${data.code}`);
+      let list: Ayah[] = data.data.ayahs;
+      if (surah.id !== 1 && surah.id !== 9) {
+        list = list.filter(a => !(a.numberInSurah === 1 && isBismillahOnly(a.text)));
+        if (list.length > 0 && list[0]) {
+          list[0] = { ...list[0], text: stripBismillahPrefix(list[0].text) };
         }
-      })
-      .catch(e => setError(`Fetch failed: ${e.message}`))
-      .finally(() => setLoading(false));
+      }
+      setAyahs(list);
+    };
+
+    async function fetchSurah(): Promise<void> {
+      try {
+        const r = await fetch(`${getApiBase()}/quran/surah/${surah.id}`, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
+        parseSurah(data);
+        saveSurahToCache(surah.id, data);
+        return;
+      } catch (primaryErr) {
+        console.warn("[Quran] Primary API failed, trying CDN fallback:", primaryErr);
+      }
+
+      try {
+        const r = await fetch(`https://api.alquran.cloud/v1/surah/${surah.id}/quran-uthmani`, { signal: AbortSignal.timeout(12000) });
+        if (!r.ok) throw new Error(`CDN HTTP ${r.status}`);
+        const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
+        parseSurah(data);
+        saveSurahToCache(surah.id, data);
+        return;
+      } catch (fallbackErr) {
+        const cached = loadSurahFromCache(surah.id);
+        if (cached) {
+          try {
+            parseSurah(cached as { code: number; data: { ayahs: Ayah[] } });
+            console.warn("[Quran] Loaded surah from cache (offline mode)");
+            return;
+          } catch {
+            // ignore and fall through
+          }
+        }
+        setError(`تعذّر تحميل السورة — تحقق من الاتصال بالإنترنت`);
+        console.error("[Quran] CDN fallback also failed:", fallbackErr);
+      }
+    }
+
+    void fetchSurah().finally(() => setLoading(false));
   }, [surah.id]);
 
   const stopAudio = useCallback(() => {
@@ -276,7 +307,7 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
     const ayah = ayahs[idx];
     if (!ayah) return null;
     const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
-    const url = await getCachedAudioUrl(source);
+    const url = isNativeApp() ? await getCachedAudioUrlNative(source) : await getCachedAudioUrl(source);
     try {
       const ctx = await ensureAudioCtx();
       const r = await fetch(url);
@@ -298,7 +329,7 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
     if (isNativeApp()) {
       void preloadQuranVerseNative(source);
     } else {
-      void preloadQuranVerseFast(source);
+      void preloadQuranVerse(source);
     }
     preloadedIdxRef.current = idx;
   }, [ayahs, surah.id, reciterId]);
@@ -306,6 +337,16 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
   const playIdx = useCallback(async (idx: number) => {
     const ayah = ayahs[idx];
     if (!ayah) return;
+
+    // Persist the verse audio for offline playback.
+    // - Web: Cache API
+    // - Native: Capacitor Filesystem
+    const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
+    if (isNativeApp()) {
+      void preloadQuranVerseNative(source);
+    } else {
+      void preloadQuranVerseForCache(source);
+    }
 
     const tryWeb = async () => {
       const OVERLAP_SEC = 0.015;
@@ -394,7 +435,6 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
         if (!url) return;
         audio.volume = 1;
         if (isNativeApp()) {
-          const source: QuranAudioSource = { surahId: surah.id, ayahNum: ayah.numberInSurah, reciterId };
           url = await getCachedAudioUrlNative(source);
         }
         audio.src = url;

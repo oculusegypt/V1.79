@@ -291,10 +291,10 @@ export async function buildScheduledNotifications(
     d.setHours(h ?? 0, m ?? 0, 0, 0);
     return d.getTime();
   };
-  const calcSunPathPercent = (sunrise: string, maghrib: string) => {
+  const calcSunPathPercent = (sunrise: string, maghrib: string, atMs = Date.now()) => {
     const sr = parseTimeToTodayMs(sunrise);
     const mg = parseTimeToTodayMs(maghrib);
-    const t = Date.now();
+    const t = atMs;
     if (!Number.isFinite(sr) || !Number.isFinite(mg) || mg <= sr) return null;
     const p = clamp01((t - sr) / (mg - sr));
     return Math.round(p * 100);
@@ -319,7 +319,7 @@ export async function buildScheduledNotifications(
     : null;
 
   const sunPathPercent = prayerTimings
-    ? calcSunPathPercent(prayerTimings.Sunrise, prayerTimings.Maghrib)
+    ? calcSunPathPercent(prayerTimings.Sunrise, prayerTimings.Maghrib, Date.now())
     : null;
   const sunPathLine = sunPathPercent == null
     ? ""
@@ -328,7 +328,18 @@ export async function buildScheduledNotifications(
     ? ""
     : `مسار الشمس: ${sunPathDots(sunPathPercent)}  ${sunPathPercent}%`;
 
-  const buildSunPathCardPng = (percent: number): string | null => {
+  const getSkyColorsForHour = (h: number): { top: string; bottom: string; sunColor: string; sunGlow: string } => {
+    if (h < 4)  return { top: "#0a0520", bottom: "#1a0a3a", sunColor: "#fbbf24", sunGlow: "rgba(251,191,36,0.08)" };
+    if (h < 6)  return { top: "#1e1035", bottom: "#4a1d73", sunColor: "#fbbf24", sunGlow: "rgba(251,191,36,0.18)" };
+    if (h < 8)  return { top: "#7c2d12", bottom: "#ea580c", sunColor: "#fbbf24", sunGlow: "rgba(251,191,36,0.35)" };
+    if (h < 12) return { top: "#1d4ed8", bottom: "#60a5fa", sunColor: "#fde047", sunGlow: "rgba(253,224,71,0.4)" };
+    if (h < 13) return { top: "#0c4a6e", bottom: "#0ea5e9", sunColor: "#fde68a", sunGlow: "rgba(253,230,138,0.45)" };
+    if (h < 16) return { top: "#78350f", bottom: "#d97706", sunColor: "#fbbf24", sunGlow: "rgba(251,191,36,0.3)" };
+    if (h < 19) return { top: "#4c1d95", bottom: "#b45309", sunColor: "#fb923c", sunGlow: "rgba(251,146,60,0.35)" };
+    return { top: "#0f172a", bottom: "#1e1b4b", sunColor: "#fbbf24", sunGlow: "rgba(251,191,36,0.08)" };
+  };
+
+  const buildSunPathCardPng = (percent: number, atMs: number): string | null => {
     try {
       if (typeof document === "undefined") return null;
       const w = 280;
@@ -343,17 +354,43 @@ export async function buildScheduledNotifications(
 
       const p = clamp01(percent / 100);
 
+      const hour = new Date(atMs).getHours();
+      const sky = getSkyColorsForHour(hour);
+      const isNight = hour < 5 || hour >= 20;
+
       // Background gradient
       const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, "#0c4a6e");
-      g.addColorStop(1, "#0ea5e9");
+      g.addColorStop(0, sky.top);
+      g.addColorStop(1, sky.bottom);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
+      // Stars for night
+      if (isNight) {
+        ctx.save();
+        ctx.fillStyle = "rgba(255,255,255,0.75)";
+        const stars = [
+          { x: 22, y: 16, r: 1.2 },
+          { x: 66, y: 10, r: 0.9 },
+          { x: 98, y: 22, r: 1.0 },
+          { x: 162, y: 12, r: 0.8 },
+          { x: 208, y: 26, r: 1.1 },
+          { x: 248, y: 14, r: 0.9 },
+        ];
+        for (const s of stars) {
+          ctx.globalAlpha = 0.55;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
       // Arc path (quadratic Bezier) similar to PrayerSkyHeader
-      const x0 = 22, y0 = 86;
+      // Mirrored horizontally to better match perceived real sun direction.
+      const x0 = w - 22, y0 = 86;
       const cx = w / 2, cy = 18;
-      const x1 = w - 22, y1 = 86;
+      const x1 = 22, y1 = 86;
 
       ctx.save();
       ctx.strokeStyle = "rgba(255,255,255,0.22)";
@@ -371,12 +408,12 @@ export async function buildScheduledNotifications(
       const sunY = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1;
 
       // Glow
-      ctx.fillStyle = "rgba(253,224,71,0.30)";
+      ctx.fillStyle = sky.sunGlow;
       ctx.beginPath();
       ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
       ctx.fill();
       // Sun core
-      ctx.fillStyle = "#fde047";
+      ctx.fillStyle = sky.sunColor;
       ctx.beginPath();
       ctx.arc(sunX, sunY, 9, 0, Math.PI * 2);
       ctx.fill();
@@ -405,7 +442,7 @@ export async function buildScheduledNotifications(
   const sunPathAttachment = sunPathPercent == null
     ? null
     : (() => {
-        const url = buildSunPathCardPng(sunPathPercent);
+        const url = buildSunPathCardPng(sunPathPercent, Date.now());
         if (!url) return null;
         return [{ id: "sunpath", url }];
       })();
@@ -442,13 +479,18 @@ export async function buildScheduledNotifications(
   if (settings.morningAdhkar) {
     const fireAt = todayTimeMs(settings.morningAdhkarTime);
     if (fireAt > now - pastWindowMs) {
+      const p = prayerTimings ? calcSunPathPercent(prayerTimings.Sunrise, prayerTimings.Maghrib, fireAt) : null;
+      const att = p == null ? undefined : (() => {
+        const url = buildSunPathCardPng(p, fireAt);
+        return url ? [{ id: "sunpath", url }] : undefined;
+      })();
       notifs.push({
         tag: "morning-adhkar",
         title: "📿 أذكار الصباح",
         body: "لا تنسَ أذكار الصباح — «ما من عبد يقول في صباح كل يوم وفي مساء كل ليلة...» ابدأ الآن",
         fireAt,
         url: "/?adhkar=morning",
-        attachments: sunPathAttachment ?? undefined,
+        attachments: att,
       });
     }
   }
@@ -457,13 +499,18 @@ export async function buildScheduledNotifications(
   if (settings.eveningAdhkar) {
     const fireAt = todayTimeMs(settings.eveningAdhkarTime);
     if (fireAt > now - pastWindowMs) {
+      const p = prayerTimings ? calcSunPathPercent(prayerTimings.Sunrise, prayerTimings.Maghrib, fireAt) : null;
+      const att = p == null ? undefined : (() => {
+        const url = buildSunPathCardPng(p, fireAt);
+        return url ? [{ id: "sunpath", url }] : undefined;
+      })();
       notifs.push({
         tag: "evening-adhkar",
         title: "🌙 أذكار المساء",
         body: "حان وقت أذكار المساء — أنت بحاجة إلى حصن الذكر الآن",
         fireAt,
         url: "/?adhkar=evening",
-        attachments: sunPathAttachment ?? undefined,
+        attachments: att,
       });
     }
   }
