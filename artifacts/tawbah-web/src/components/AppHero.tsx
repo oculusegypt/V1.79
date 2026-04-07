@@ -124,7 +124,7 @@ export function AppHero() {
           className="mb-3"
         >
           <div
-            className="w-[74px] h-[74px] rounded-full overflow-hidden ring-2 ring-primary/30 shadow-xl shadow-primary/20"
+            className="w-[58px] h-[58px] rounded-full overflow-hidden ring-2 ring-primary/30 shadow-xl shadow-primary/20"
             style={{ boxShadow: "0 0 24px color-mix(in srgb, var(--primary) 30%, transparent), 0 4px 16px rgba(0,0,0,0.12)" }}
           >
             <img

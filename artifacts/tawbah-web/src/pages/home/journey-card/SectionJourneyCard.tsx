@@ -11,19 +11,16 @@ import { getAuthHeader } from "@/lib/auth-client";
 import {
   StarDots,
   BentoCompassWidget,
-  DhikrCounterCell,
-  SecretOfTheDayCellBento,
 } from "../bento-cells";
 import { Journey30HeroCard } from "./Journey30HeroCard";
 
 export function SectionJourneyCard() {
-  const { data: journey } = useUserJourney();
+  const { data: journey, isLoading: journeyLoading } = useUserJourney();
   const { theme } = useSettings();
   const isDark = theme === "dark";
   const sessionId = getSessionId();
 
-  // Check journey30 directly to see if there's an active journey
-  const { data: j30Data } = useQuery({
+  const { data: j30Data, isLoading: j30Loading } = useQuery({
     queryKey: ["journey30-active-check", sessionId],
     queryFn: async () => {
       const res = await fetch(
@@ -36,12 +33,8 @@ export function SectionJourneyCard() {
       return res.json();
     },
     enabled: !!sessionId,
+    initialData: null,
   });
-
-  // Journey is active if either the journey meta says so OR we have journey30 data
-  const journeyActive =
-    journey?.active || (j30Data?.completedCount > 0 || j30Data?.currentDay > 1);
-  const hasSin = journey?.hasSin ?? true;
 
   const [joinCount, setJoinCount] = useState(
     () => 8400 + Math.floor(Math.random() * 300),
@@ -53,6 +46,15 @@ export function SectionJourneyCard() {
     );
     return () => clearInterval(t);
   }, []);
+
+  const isLoading = journeyLoading || j30Loading;
+
+  if (isLoading) {
+    return null;
+  }
+
+  const journeyActive = journey?.active || (j30Data?.completedCount > 0 || j30Data?.currentDay > 1);
+  const hasSin = journey?.hasSin ?? true;
 
   if (journeyActive) {
     return (
@@ -158,9 +160,10 @@ export function SectionJourneyCard() {
             ✦ ٣٠ يوماً من النور ✦
           </p>
           <h2
-            className="font-black leading-tight mb-2"
+            className="font-black mb-3 pb-1"
             style={{
               fontSize: 26,
+              lineHeight: 1.60,
               background: isDark
                 ? "linear-gradient(135deg, #ffffff 0%, #fde68a 40%, #f59e0b 70%, #fbbf24 100%)"
                 : "linear-gradient(135deg, #713f12 0%, #a16207 40%, #ca8a04 70%, #eab308 100%)",
@@ -233,16 +236,6 @@ export function SectionJourneyCard() {
               </span>
             </div>
           ))}
-        </div>
-
-        {/* Bento row */}
-        <div className="flex gap-2">
-          <div className="flex-[3]">
-            <DhikrCounterCell />
-          </div>
-          <div className="flex-[2]">
-            <SecretOfTheDayCellBento />
-          </div>
         </div>
 
         {/* CTA */}

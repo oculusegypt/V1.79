@@ -208,10 +208,48 @@ export default function PrayerTimes() {
   }, [native, permission, settings.enabled]);
 
   useEffect(() => {
-    if (city && country) fetchTimes(city, country);
+    if (city && country) {
+      void fetchTimes(city, country);
+    }
   }, []);
 
   const fetchTimes = async (c: string, cn: string) => {
+    const lat = parseFloat(localStorage.getItem("prayerLat") ?? "");
+    const lng = parseFloat(localStorage.getItem("prayerLng") ?? "");
+    const hasLatLng = Number.isFinite(lat) && Number.isFinite(lng);
+
+    if (cn === "Auto" && hasLatLng) {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(
+          `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=4`
+        );
+        const data = await res.json();
+        if (data.code !== 200) throw new Error("تعذّر جلب المواقيت");
+        const t = data.data.timings as PrayerTimings;
+        const cleaned: PrayerTimings = {
+          Fajr: t.Fajr.split(" ")[0],
+          Sunrise: t.Sunrise.split(" ")[0],
+          Dhuhr: t.Dhuhr.split(" ")[0],
+          Asr: t.Asr.split(" ")[0],
+          Maghrib: t.Maghrib.split(" ")[0],
+          Isha: t.Isha.split(" ")[0],
+        };
+        setTimings(cleaned);
+        setCity(c);
+        setCountry("Auto");
+        localStorage.setItem("prayerCity", c);
+        localStorage.setItem("prayerCountry", "Auto");
+        localStorage.removeItem("prayer_timings_cache");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "خطأ في جلب المواقيت");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!c.trim() || !cn.trim()) return;
     setLoading(true);
     setError("");
@@ -236,6 +274,7 @@ export default function PrayerTimes() {
       setCountry(cn);
       localStorage.setItem("prayerCity", c);
       localStorage.setItem("prayerCountry", cn);
+      localStorage.removeItem("prayer_timings_cache");
     } catch (e) {
       setError(e instanceof Error ? e.message : "خطأ في جلب المواقيت");
     } finally {

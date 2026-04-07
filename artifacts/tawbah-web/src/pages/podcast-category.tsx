@@ -3,11 +3,21 @@ import { useLocation, useParams } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, Play, Mic2, ChevronLeft } from "lucide-react";
 import { useSettings } from "@/context/SettingsContext";
+import { setAudioSrc } from "@/lib/native-audio";
+import { apiUrl, isNativeApp } from "@/lib/api-base";
+import { extractDominantColors } from "../lib/image-colors";
 import { PODCAST_CATEGORIES } from "./islamic-programs/data";
 
 const CARD_W = 118;
 const CARD_H = 86;
 const GAP = 10;
+
+function resolvePodcastMediaUrl(url: string): string {
+  if (url.startsWith("/islamicaudio/")) {
+    return `https://islamicaudio.net${url.slice("/islamicaudio".length)}`;
+  }
+  return url;
+}
 
 export default function PodcastCategoryPage() {
   const params = useParams<{ id: string }>();
@@ -18,6 +28,24 @@ export default function PodcastCategoryPage() {
   const category = PODCAST_CATEGORIES.find(c => c.id === params.id);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const [playingId, setPlayingId] = React.useState<string | null>(null);
+  const [episodeColors, setEpisodeColors] = React.useState<Record<string, { color: string; colorTo: string }>>({});
+
+  React.useEffect(() => {
+    const loadColors = async () => {
+      if (!category) return;
+      const colors: Record<string, { color: string; colorTo: string }> = {};
+      for (const ep of category.episodes) {
+        if (ep.imageUrl && !episodeColors[ep.id]) {
+          const extracted = await extractDominantColors(ep.imageUrl);
+          colors[ep.id] = extracted;
+        }
+      }
+      if (Object.keys(colors).length > 0) {
+        setEpisodeColors(prev => ({ ...prev, ...colors }));
+      }
+    };
+    loadColors();
+  }, [category]);
 
   React.useEffect(() => {
     if (!audioRef.current) audioRef.current = new Audio();
@@ -26,6 +54,10 @@ export default function PodcastCategoryPage() {
     a.addEventListener("ended", onEnded);
     return () => {
       a.removeEventListener("ended", onEnded);
+      // إيقاف الصوت عند مغادرة الصفحة
+      a.pause();
+      a.currentTime = 0;
+      setPlayingId(null);
     };
   }, []);
 
@@ -52,17 +84,37 @@ export default function PodcastCategoryPage() {
     if (!audioRef.current) audioRef.current = new Audio();
     const a = audioRef.current;
     
-    if (playingId === episodeId) {
+    // Create composite ID to match main page logic
+    const compositeEpisodeId = `${category.id}:${episodeId}`;
+    
+    if (playingId === compositeEpisodeId) {
       a.pause();
       setPlayingId(null);
       return;
     }
     
-    a.src = mediaUrl;
     a.preload = "none";
     try {
+      // Use same crossOrigin logic as main page
+      (a as unknown as { crossOrigin: string | null }).crossOrigin = isNativeApp()
+        ? null
+        : null;
+    } catch {}
+    try {
+      (a as unknown as { playsInline?: boolean }).playsInline = true;
+    } catch {}
+
+    a.pause();
+    a.currentTime = 0;
+    
+    // Use setAudioSrc for consistency with main page
+    // forceDirect=true for direct podcast URLs (not using radio proxy)
+    await setAudioSrc(a, apiUrl(resolvePodcastMediaUrl(mediaUrl)), true);
+    a.load();
+    
+    try {
       await a.play();
-      setPlayingId(episodeId);
+      setPlayingId(compositeEpisodeId);
     } catch {
       setPlayingId(null);
     }
@@ -142,7 +194,12 @@ export default function PodcastCategoryPage() {
       {/* Episodes Grid */}
       <div className="px-4 pt-5">
         <div className="grid grid-cols-3 gap-3">
-          {category.episodes.map((ep, i) => (
+          {category.episodes.map((ep, i) => {
+            // Use extracted color from image, fallback to category color
+            const extracted = episodeColors[ep.id];
+            const epColor = extracted?.color || category.color;
+            const epColorTo = extracted?.colorTo || category.colorTo;
+            return (
             <motion.div
               key={ep.id}
               initial={{ opacity: 0, y: 12 }}
@@ -152,18 +209,14 @@ export default function PodcastCategoryPage() {
               <button
                 onClick={() => handlePlayEpisode(ep.id, ep.mediaUrl)}
                 className="relative rounded-xl overflow-hidden flex flex-col justify-end w-full aspect-[118/86] active:scale-95 transition-transform"
+                style={{
+                  background: ep.imageUrl
+                    ? `linear-gradient(135deg, ${epColor}99, ${epColorTo}99), url(${ep.imageUrl})`
+                    : `linear-gradient(135deg, ${epColor}aa, ${epColorTo}aa)`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
               >
-                {ep.imageUrl ? (
-                  <>
-                    <img src={ep.imageUrl} alt={ep.title} className="absolute inset-0 w-full h-full object-cover" />
-                    <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85))" }} />
-                  </>
-                ) : (
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${category.color}, ${category.colorTo})` }}
-                  />
-                )}
                 <div className="absolute top-[-8px] right-[-8px] w-[30px] h-[30px] rounded-full opacity-15 bg-white" />
                 <div className="absolute top-2 right-2 w-6 h-6 rounded-md overflow-hidden shrink-0 border border-white/30">
                   {ep.imageUrl && (
@@ -175,7 +228,8 @@ export default function PodcastCategoryPage() {
                 </div>
               </button>
             </motion.div>
-          ))}
+          );
+          })}
         </div>
       </div>
     </div>

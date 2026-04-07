@@ -1066,8 +1066,8 @@ export function IslamicHero() {
               transition={{ duration: 2.4, repeat: orbiting ? Infinity : 0, ease: "easeInOut" }}
               style={{
                 position: "relative",
-                width: 120,
-                height: 120,
+                width: 92,
+                height: 92,
                 marginTop: orbiting ? 0 : 10,
                 marginLeft: 4,
                 marginRight: -4,

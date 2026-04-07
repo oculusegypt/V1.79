@@ -263,6 +263,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   // ── Listen for SW-fired notifications (push) → add to in-app inbox ───────────
   useEffect(() => {
     if (!supported) return;
+    // Native: LocalNotifications handles scheduling; avoid SW message-driven duplicates.
+    if (native) return;
     const handleSwMessage = (event: MessageEvent) => {
       // Direct adhkar modal trigger from SW notificationclick (app was open in background)
       if (event.data?.type === "SHOW_ADHKAR") {
@@ -316,7 +318,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     navigator.serviceWorker.addEventListener("message", handleSwMessage);
     return () =>
       navigator.serviceWorker.removeEventListener("message", handleSwMessage);
-  }, [supported]);
+  }, [supported, native]);
 
   // ── In-app polling every 30s — works on ALL pages while app is open ───────────
   // Note: For native apps, we skip this because LocalNotifications already handles scheduling
@@ -389,6 +391,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // ── Adhkar polling — shows the modal at configured morning/evening time ────────
   useEffect(() => {
+    // Native: showing the adhkar modal automatically at the same time as a status-bar
+    // notification feels like a duplicate to users. Keep this web-only.
+    if (native) return;
     const ADHKAR_CHECK_INTERVAL = 60_000; // check every minute
     const ADHKAR_WINDOW_MS = 120_000; // ±2 minutes
 
@@ -436,6 +441,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(checkAdhkar, ADHKAR_CHECK_INTERVAL);
     return () => clearInterval(interval);
   }, [
+    native,
     settings.morningAdhkar,
     settings.morningAdhkarTime,
     settings.eveningAdhkar,

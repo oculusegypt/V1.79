@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Search, Play, Pause, Eye, EyeOff, Check, X, RotateCcw, Loader2, Star } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { setAudioSrc } from "@/lib/native-audio";
+import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
 import { getApiBase } from "@/lib/api-base";
-import { useSettings } from "@/context/SettingsContext";
+import { setAudioSrc } from "@/lib/native-audio";
+import { loadSurahFromCache, saveSurahToCache } from "@/lib/quran-surah-cache";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -70,18 +71,47 @@ function MemorizeSession({ surah, reciterId, onBack }: { surah: Surah; reciterId
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetch(`${getApiBase()}/quran/surah/${surah.id}`)
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(data => {
-        if (data.code === 200) {
-          setAyahs(data.data.ayahs);
-          setRevealed(new Array(data.data.ayahs.length).fill(false));
-        } else {
-          setError(`API error: ${data.code}`);
+    const parseSurah = (data: { code: number; data: { ayahs: Ayah[] } }) => {
+      if (data.code !== 200) throw new Error(`API error: ${data.code}`);
+      setAyahs(data.data.ayahs);
+      setRevealed(new Array(data.data.ayahs.length).fill(false));
+    };
+
+    async function fetchSurah(): Promise<void> {
+      try {
+        const r = await fetch(`${getApiBase()}/quran/surah/${surah.id}`, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
+        parseSurah(data);
+        saveSurahToCache(surah.id, data);
+        return;
+      } catch (primaryErr) {
+        console.warn("[Quran] Primary API failed, trying CDN fallback:", primaryErr);
+      }
+
+      try {
+        const r = await fetch(`https://api.alquran.cloud/v1/surah/${surah.id}/quran-uthmani`, { signal: AbortSignal.timeout(12000) });
+        if (!r.ok) throw new Error(`CDN HTTP ${r.status}`);
+        const data = await r.json() as { code: number; data: { ayahs: Ayah[] } };
+        parseSurah(data);
+        saveSurahToCache(surah.id, data);
+      } catch (fallbackErr) {
+        const cached = loadSurahFromCache(surah.id);
+        if (cached) {
+          try {
+            parseSurah(cached as { code: number; data: { ayahs: Ayah[] } });
+            console.warn("[Quran] Loaded surah from cache (offline mode)");
+            return;
+          } catch {
+            // ignore and fall through
+          }
         }
-      })
-      .catch(e => setError(`Fetch failed: ${e.message}`))
-      .finally(() => setLoading(false));
+        setError(`تعذّر تحميل السورة — تحقق من الاتصال بالإنترنت`);
+        console.error("[Quran] CDN fallback also failed:", fallbackErr);
+      }
+    }
+
+    void fetchSurah().finally(() => setLoading(false));
   }, [surah.id]);
 
   const urlForIdx = (idx: number): string | null => {

@@ -2,8 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Play, Pause } from "lucide-react";
 import { useSettings, QURAN_RECITERS } from "@/context/SettingsContext";
+import { isNativeApp } from "@/lib/api-base";
+import { getCachedAudioUrl, preloadQuranVerseForCache, type QuranAudioSource } from "@/lib/quran-audio";
+import { getCachedAudioUrlNative, preloadQuranVerseNative } from "@/lib/quran-audio-native";
 import type { MessageSegment } from "../types";
-import { toGlobalAyah, reciterAudioUrl, getSurahName } from "../quran-helpers";
+import { toGlobalAyah, reciterAudioUrl } from "../quran-helpers";
+import { getSurahName } from "@/lib/surah-name-map";
 
 interface Props {
   seg: MessageSegment;
@@ -50,7 +54,34 @@ export function QuranCard({ seg, isActive, isPlaying, onEnded, onManualToggle, r
     if (!audio) return;
     if (isActive && isPlaying) {
       setAudioError(false);
-      audio.play().catch(() => {});
+      const source: QuranAudioSource = { surahId: seg.surah!, ayahNum: seg.ayah!, reciterId };
+
+      // Persist for offline playback on every play.
+      if (isNativeApp()) {
+        void preloadQuranVerseNative(source);
+      } else {
+        void preloadQuranVerseForCache(source);
+      }
+
+      // Prefer cached URL when possible (enables offline), fallback to direct.
+      void (async () => {
+        try {
+          const cachedUrl = isNativeApp()
+            ? await getCachedAudioUrlNative(source)
+            : await getCachedAudioUrl(source);
+          if (cachedUrl && typeof cachedUrl === "string") {
+            // Avoid resetting while already set.
+            if (audio.src !== cachedUrl) {
+              audio.pause();
+              audio.src = cachedUrl;
+              audio.load();
+            }
+          }
+        } catch {
+        } finally {
+          audio.play().catch(() => {});
+        }
+      })();
     } else {
       audio.pause();
       if (!isActive) audio.currentTime = 0;
@@ -83,7 +114,7 @@ export function QuranCard({ seg, isActive, isPlaying, onEnded, onManualToggle, r
               {reciterName}
             </div>
             <div className="text-[13px] font-bold text-white leading-none">
-              سورة {getSurahName(seg.surah!)} — آية {seg.ayah}
+              سورة {getSurahName(seg.surah!, 'ar')} — آية {seg.ayah}
             </div>
           </div>
         </div>
