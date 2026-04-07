@@ -181,7 +181,7 @@ const SURAHS: Surah[] = [
 
 // ─── Mushaf Reader ────────────────────────────────────────────────────────────
 
-function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: string; onBack: () => void }) {
+function MushafReader({ surah, reciterId, onBack, showHeader = true }: { surah: Surah; reciterId: string; onBack: () => void; showHeader?: boolean }) {
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -487,24 +487,26 @@ function MushafReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
   return (
     <div className="flex flex-col h-full">
       {/* Reader header */}
-      <div
-        className="shrink-0 px-4 py-3 border-b flex items-center justify-between gap-3"
-        style={{ borderColor: "rgba(200,168,75,0.15)" }}
-      >
-        <button onClick={onBack} className="w-8 h-8 rounded-xl bg-muted/60 flex items-center justify-center">
-          <ChevronRight size={16} className="text-muted-foreground" />
-        </button>
-        <div className="flex-1 text-center">
-          <p className="font-bold text-base" style={{ fontFamily: "'Amiri Quran', serif", color: "#c8a84b" }}>
-            سورة {surah.name}
-          </p>
-          <p className="text-[10px] text-muted-foreground">{surah.ayahCount} آية · {surah.revelation} · الجزء {surah.juz}</p>
+      {showHeader && (
+        <div
+          className="shrink-0 px-4 py-3 border-b flex items-center justify-between gap-3"
+          style={{ borderColor: "rgba(200,168,75,0.15)" }}
+        >
+          <button onClick={onBack} className="w-8 h-8 rounded-xl bg-muted/60 flex items-center justify-center">
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </button>
+          <div className="flex-1 text-center">
+            <p className="font-bold text-base" style={{ fontFamily: "'Amiri Quran', serif", color: "#c8a84b" }}>
+              سورة {surah.name}
+            </p>
+            <p className="text-[10px] text-muted-foreground">{surah.ayahCount} آية · {surah.revelation} · الجزء {surah.juz}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setFontSize(s => Math.max(16, s - 2))} className="w-7 h-7 rounded-lg bg-muted/60 text-[11px] font-bold flex items-center justify-center text-muted-foreground">أ-</button>
+            <button onClick={() => setFontSize(s => Math.min(32, s + 2))} className="w-7 h-7 rounded-lg bg-muted/60 text-[13px] font-bold flex items-center justify-center text-muted-foreground">أ+</button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setFontSize(s => Math.max(16, s - 2))} className="w-7 h-7 rounded-lg bg-muted/60 text-[11px] font-bold flex items-center justify-center text-muted-foreground">أ-</button>
-          <button onClick={() => setFontSize(s => Math.min(32, s + 2))} className="w-7 h-7 rounded-lg bg-muted/60 text-[13px] font-bold flex items-center justify-center text-muted-foreground">أ+</button>
-        </div>
-      </div>
+      )}
 
       {/* Controls bar */}
       <div className="shrink-0 px-4 py-2 flex items-center gap-2 border-b" style={{ borderColor: "rgba(200,168,75,0.08)" }}>
@@ -684,7 +686,7 @@ function SurahPicker({ onSelect }: { onSelect: (s: Surah) => void }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function QuranReadPage() {
+export default function QuranReadPage({ onBack }: { onBack?: () => void }) {
   const { quranReciterId, setQuranReciterId, theme } = useSettings();
   const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
@@ -696,6 +698,7 @@ export default function QuranReadPage() {
       <PageHeader
         title={selectedSurah ? `سورة ${selectedSurah.name}` : "قراءة المصحف"}
         subtitle={selectedSurah ? `${selectedSurah.ayahCount} آية · ${selectedSurah.revelation}` : "١١٤ سورة"}
+        onBack={onBack}
         right={
           <button
             onClick={() => setShowReciterPicker(s => !s)}
@@ -744,6 +747,7 @@ export default function QuranReadPage() {
             surah={selectedSurah}
             reciterId={quranReciterId}
             onBack={() => setSelectedSurah(null)}
+            showHeader={false}
           />
         ) : (
           <SurahPicker onSelect={setSelectedSurah} />

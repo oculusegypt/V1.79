@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, ChevronDown, ChevronUp, Volume2, BookOpen, Mic } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useSettings } from "@/context/SettingsContext";
 
@@ -176,7 +176,7 @@ const CATEGORIES = ["الكل", "أساسيات", "أحكام", "مدود", "و�
 
 // ─── Rule Card ─────────────────────────────────────────────────────────────────
 
-function RuleCard({ rule }: { rule: TajweedRule }) {
+function RuleCard({ rule, isDark }: { rule: TajweedRule; isDark: boolean }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <motion.div
@@ -217,16 +217,16 @@ function RuleCard({ rule }: { rule: TajweedRule }) {
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 flex flex-col gap-3">
-              <div className="h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+              <div className="h-px" style={{ background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }} />
 
               {rule.example && (
                 <div
                   className="rounded-xl p-3 text-center"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.1)" }}
                 >
                   <p
                     className="text-[18px] leading-[2.2]"
-                    style={{ fontFamily: "'Amiri Quran', serif", color: rule.categoryColor }}
+                    style={{ fontFamily: "'Amiri Quran', serif", color: isDark ? rule.categoryColor : '#1f2937' }}
                   >
                     {rule.example}
                   </p>
@@ -236,17 +236,17 @@ function RuleCard({ rule }: { rule: TajweedRule }) {
                 </div>
               )}
 
-              <p className="text-[12px] leading-[1.9] text-right" style={{ color: "rgba(255,255,255,0.8)" }}>
+              <p className="text-[12px] leading-[1.9] text-right" style={{ color: isDark ? 'rgba(255,255,255,0.8)' : '#374151' }}>
                 {rule.detail}
               </p>
 
               {rule.tip && (
                 <div
                   className="flex items-start gap-2 px-3 py-2.5 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.1)" }}
                 >
                   <Volume2 size={11} style={{ color: rule.categoryColor }} className="mt-0.5 shrink-0" />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{rule.tip}</p>
+                  <p className="text-[11px] leading-relaxed" style={{ color: isDark ? 'rgba(255,255,255,0.65)' : '#6b7280' }}>{rule.tip}</p>
                 </div>
               )}
             </div>
@@ -259,7 +259,7 @@ function RuleCard({ rule }: { rule: TajweedRule }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function QuranTajweedPage() {
+export default function QuranTajweedPage({ onBack }: { onBack?: () => void }) {
   const { theme } = useSettings();
   const isDark = theme === "dark";
   const [activeCategory, setActiveCategory] = useState("الكل");
@@ -269,7 +269,7 @@ export default function QuranTajweedPage() {
 
   return (
     <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
-      <PageHeader title="علم التجويد" subtitle="إتقان تلاوة القرآن الكريم" />
+      <PageHeader title="علم التجويد" subtitle="إتقان تلاوة القرآن الكريم" onBack={onBack} />
 
       <div className="px-4 pt-4 flex flex-col gap-4">
         {/* Hero */}
@@ -342,7 +342,7 @@ export default function QuranTajweedPage() {
                 exit={{ opacity: 0 }}
                 transition={{ delay: i * 0.04 }}
               >
-                <RuleCard rule={rule} />
+                <RuleCard rule={rule} isDark={isDark} />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -371,16 +371,16 @@ export default function QuranTajweedPage() {
               >
                 <Mic size={8} style={{ color: "#3b82f6" }} />
               </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">{step}</p>
+              <p className="text-[11px] leading-relaxed" style={{ color: isDark ? 'rgba(255,255,255,0.65)' : '#374151' }}>{step}</p>
             </div>
           ))}
         </div>
 
         <div className="text-center py-4">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px]" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
             ﴿إِنَّا سَنُلْقِي عَلَيْكَ قَوْلًا ثَقِيلًا﴾
           </p>
-          <p className="text-[10px] text-muted-foreground/50 mt-1">المزمل: ٥</p>
+          <p className="text-[10px] mt-1" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>المزمل: ٥</p>
         </div>
       </div>
     </div>

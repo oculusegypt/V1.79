@@ -24,14 +24,6 @@ const sections = [
     color: 'from-emerald-500 to-teal-600'
   },
   {
-    id: 'read',
-    title: 'القراءة',
-    description: 'قراءة المصحف الكريم',
-    icon: BookMarked,
-    component: QuranRead,
-    color: 'from-blue-500 to-indigo-600'
-  },
-  {
     id: 'listen',
     title: 'الاستماع',
     description: 'الاستماع للقرآن الكريم',
@@ -102,24 +94,16 @@ export default function QuranIndex() {
   const isDark = theme === "dark";
 
   const bgClass = isDark 
-    ? "bg-gradient-to-br from-slate-900 to-gray-800" 
-    : "bg-gradient-to-br from-slate-50 to-gray-100";
+    ? "bg-gradient-to-br from-slate-900 to-slate-800" 
+    : "bg-gradient-to-br from-slate-100 to-gray-200";
 
   if (selectedSection) {
     const section = sections.find(s => s.id === selectedSection);
     if (section) {
-      const Component = section.component;
+      const Component = section.component as unknown as React.ComponentType<{ onBack?: () => void }>;
       return (
         <div className={`min-h-screen ${bgClass}`}>
-          <StandardHeader
-            title={section.title}
-            subtitle={section.description}
-            showBack
-            onBack={() => setSelectedSection(null)}
-          />
-          <div className="pb-20">
-            <Component />
-          </div>
+          <Component onBack={() => setSelectedSection(null)} />
         </div>
       );
     }
@@ -144,9 +128,11 @@ export default function QuranIndex() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => setSelectedSection(section.id)}
-                className="relative overflow-hidden rounded-2xl p-4 text-right transition-all duration-300 hover:scale-105 active:scale-95"
+                className={`relative overflow-hidden rounded-2xl p-4 text-right transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg bg-gradient-to-br ${section.color} ${isDark ? "" : "saturate-75 brightness-110"}`}
                 style={{
-                  background: `linear-gradient(135deg, ${section.color.split(' ').join(', ')})`,
+                  boxShadow: isDark 
+                    ? '0 4px 20px rgba(0,0,0,0.3)'
+                    : '0 4px 15px rgba(0,0,0,0.1)',
                 }}
               >
                 <div className="relative z-10">
@@ -171,24 +157,29 @@ export default function QuranIndex() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="mt-8 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
+          className="mt-8 rounded-2xl p-6 shadow-lg"
+          style={{ 
+            background: isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.05)'
+          }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">نظرة سريعة</h3>
-            <Grid3X3 size={20} className="text-gray-400" />
+            <h3 className="text-lg font-bold" style={{ color: isDark ? '#fff' : '#111827' }}>نظرة سريعة</h3>
+            <Grid3X3 size={20} style={{ color: isDark ? '#9ca3af' : '#6b7280' }} />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">114</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">سورة</div>
+              <div className="text-2xl font-bold" style={{ color: isDark ? '#34d399' : '#059669' }}>114</div>
+              <div className="text-sm" style={{ color: isDark ? '#9ca3af' : '#4b5563' }}>سورة</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">6236</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">آية</div>
+              <div className="text-2xl font-bold" style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>6236</div>
+              <div className="text-sm" style={{ color: isDark ? '#9ca3af' : '#4b5563' }}>آية</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">30</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">جزء</div>
+              <div className="text-2xl font-bold" style={{ color: isDark ? '#a78bfa' : '#7c3aed' }}>30</div>
+              <div className="text-sm" style={{ color: isDark ? '#9ca3af' : '#4b5563' }}>جزء</div>
             </div>
           </div>
         </motion.div>

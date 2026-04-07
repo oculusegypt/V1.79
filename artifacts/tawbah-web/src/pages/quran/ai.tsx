@@ -65,7 +65,7 @@ function MessageBubble({ msg }: { msg: Message }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function QuranAiPage() {
+export default function QuranAiPage({ onBack }: { onBack?: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -135,7 +135,7 @@ export default function QuranAiPage() {
   return (
     <div className="flex flex-col h-screen" dir="rtl">
       <div className="shrink-0">
-        <PageHeader title="مساعد القرآن الذكي" subtitle="اسأل عن أي آية أو موضوع قرآني" />
+        <PageHeader title="مساعد القرآن الذكي" subtitle="اسأل عن أي آية أو موضوع قرآني" onBack={onBack} />
       </div>
 
       {!started ? (

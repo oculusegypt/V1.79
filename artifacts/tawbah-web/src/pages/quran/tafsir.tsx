@@ -76,7 +76,7 @@ const SURAHS: Surah[] = [
 
 // ─── Tafsir Reader ────────────────────────────────────────────────────────────
 
-function TafsirReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: string; onBack: () => void }) {
+function TafsirReader({ surah, reciterId, onBack, isDark }: { surah: Surah; reciterId: string; onBack: () => void; isDark: boolean }) {
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [tafsirAyahs, setTafsirAyahs] = useState<Ayah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -290,7 +290,7 @@ function TafsirReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
 
                           {/* Tafsir text */}
                           {tafsir ? (
-                            <p className="text-[13px] leading-[2] text-right" style={{ color: "rgba(255,255,255,0.8)" }}>
+                            <p className="text-[13px] leading-[2] text-right" style={{ color: isDark ? "rgba(255,255,255,0.8)" : '#374151' }}>
                               {tafsir.text}
                             </p>
                           ) : (
@@ -313,7 +313,7 @@ function TafsirReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function QuranTafsirPage() {
+export default function QuranTafsirPage({ onBack }: { onBack?: () => void }) {
   const { quranReciterId, theme } = useSettings();
   const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
@@ -323,14 +323,14 @@ export default function QuranTafsirPage() {
   if (selectedSurah) {
     return (
       <div className={`min-h-screen flex flex-col pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`}>
-        <TafsirReader surah={selectedSurah} reciterId={quranReciterId} onBack={() => setSelectedSurah(null)} />
+        <TafsirReader surah={selectedSurah} reciterId={quranReciterId} onBack={() => setSelectedSurah(null)} isDark={isDark} />
       </div>
     );
   }
 
   return (
     <div className={`min-h-screen pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
-      <PageHeader title="التفسير التفاعلي" subtitle="انقر على أي آية للتفسير" />
+      <PageHeader title="التفسير التفاعلي" subtitle="انقر على أي آية للتفسير" onBack={onBack} />
 
       <div className="px-4 pt-4 flex flex-col gap-4">
         {/* Intro */}

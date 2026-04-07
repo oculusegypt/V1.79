@@ -471,7 +471,7 @@ function MemorizeSession({ surah, reciterId, onBack }: { surah: Surah; reciterId
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function QuranMemorizePage() {
+export default function QuranMemorizePage({ onBack }: { onBack?: () => void }) {
   const { quranReciterId, theme } = useSettings();
   const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
@@ -488,7 +488,7 @@ export default function QuranMemorizePage() {
 
   return (
     <div className={`min-h-screen pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
-      <PageHeader title="مساعد الحفظ" subtitle="احفظ القرآن آية بآية" />
+      <PageHeader title="مساعد الحفظ" subtitle="احفظ القرآن آية بآية" onBack={onBack} />
 
       <div className="px-4 pt-4 flex flex-col gap-4">
         {/* Tips */}

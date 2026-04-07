@@ -221,7 +221,7 @@ function MiracleCard({ miracle }: { miracle: Miracle }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function QuranMiraclesPage() {
+export default function QuranMiraclesPage({ onBack }: { onBack?: () => void }) {
   const { theme } = useSettings();
   const isDark = theme === "dark";
   const [activeCategory, setActiveCategory] = useState<"الكل" | "علمي" | "عددي" | "لغوي" | "تاريخي">("الكل");
@@ -232,7 +232,7 @@ export default function QuranMiraclesPage() {
 
   return (
     <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
-      <PageHeader title="إعجاز القرآن" subtitle="٥٠+ وجه إعجازي مفصّل" />
+      <PageHeader title="الإعجاز العلمي" subtitle="أسرار القرآن الكريم" onBack={onBack} />
 
       <div className="px-4 pt-4 flex flex-col gap-4">
         {/* Hero */}
@@ -263,7 +263,7 @@ export default function QuranMiraclesPage() {
         {/* Category Filter */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)}
+            <button key={cat} onClick={() => setActiveCategory(cat as any)}
               className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
                 activeCategory === cat
                   ? "bg-primary/15 border border-primary/40 text-primary"
