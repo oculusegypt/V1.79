@@ -675,13 +675,14 @@ function SurahList({ onSelect }: { onSelect: (s: Surah) => void }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuranListenPage() {
-  const { quranReciterId, setQuranReciterId } = useSettings();
+  const { quranReciterId, setQuranReciterId, theme } = useSettings();
+  const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const currentReciter = QURAN_RECITERS.find(r => r.id === quranReciterId);
 
   return (
-    <div className="min-h-screen flex flex-col pb-20">
+    <div className={`min-h-screen flex flex-col pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`}>
       <PageHeader
         title="الاستماع للقرآن"
         subtitle="اختر سورة وقارئاً"

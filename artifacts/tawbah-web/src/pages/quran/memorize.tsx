@@ -472,21 +472,22 @@ function MemorizeSession({ surah, reciterId, onBack }: { surah: Surah; reciterId
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuranMemorizePage() {
-  const { quranReciterId } = useSettings();
+  const { quranReciterId, theme } = useSettings();
+  const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
   const [search, setSearch] = useState("");
   const filtered = SHORT_SURAHS.filter(s => s.name.includes(search) || s.nameEn.toLowerCase().includes(search.toLowerCase()));
 
   if (selectedSurah) {
     return (
-      <div className="min-h-screen flex flex-col pb-20">
+      <div className={`min-h-screen flex flex-col pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`}>
         <MemorizeSession surah={selectedSurah} reciterId={quranReciterId} onBack={() => setSelectedSurah(null)} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20" dir="rtl">
+    <div className={`min-h-screen pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="مساعد الحفظ" subtitle="احفظ القرآن آية بآية" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">

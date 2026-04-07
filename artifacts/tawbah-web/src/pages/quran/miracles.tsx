@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -221,14 +222,16 @@ function MiracleCard({ miracle }: { miracle: Miracle }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuranMiraclesPage() {
-  const [activeCategory, setActiveCategory] = useState("الكل");
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
+  const [activeCategory, setActiveCategory] = useState<"الكل" | "علمي" | "عددي" | "لغوي" | "تاريخي">("الكل");
 
   const filtered = activeCategory === "الكل"
     ? MIRACLES
     : MIRACLES.filter(m => m.category === activeCategory);
 
   return (
-    <div className="min-h-screen pb-24" dir="rtl">
+    <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="إعجاز القرآن" subtitle="٥٠+ وجه إعجازي مفصّل" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">

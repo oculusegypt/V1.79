@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, Share2, RefreshCw, Palette, Type, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -189,8 +190,11 @@ export default function QuranCardsPage() {
     }
   };
 
+  const { theme: appTheme } = useSettings();
+  const isDark = appTheme === "dark";
+
   return (
-    <div className="min-h-screen pb-24" dir="rtl">
+    <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="بطاقات القرآن" subtitle="أنشئ بطاقة مرئية لأي آية" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">

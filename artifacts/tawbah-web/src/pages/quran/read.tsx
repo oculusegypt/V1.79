@@ -685,13 +685,14 @@ function SurahPicker({ onSelect }: { onSelect: (s: Surah) => void }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuranReadPage() {
-  const { quranReciterId, setQuranReciterId } = useSettings();
+  const { quranReciterId, setQuranReciterId, theme } = useSettings();
+  const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
   const currentReciter = QURAN_RECITERS.find(r => r.id === quranReciterId);
 
   return (
-    <div className="min-h-screen flex flex-col pb-20" dir="rtl">
+    <div className={`min-h-screen flex flex-col pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader
         title={selectedSurah ? `سورة ${selectedSurah.name}` : "قراءة المصحف"}
         subtitle={selectedSurah ? `${selectedSurah.ayahCount} آية · ${selectedSurah.revelation}` : "١١٤ سورة"}

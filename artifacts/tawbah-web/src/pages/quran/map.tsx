@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Map, ChevronRight, X, BookOpen, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Map } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -161,11 +162,13 @@ const PERIODS = [
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuranMapPage() {
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
   const [activeGroup, setActiveGroup] = useState<SurahGroup | null>(null);
   const [tab, setTab] = useState<"groups" | "juz" | "periods">("groups");
 
   return (
-    <div className="min-h-screen pb-24" dir="rtl">
+    <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="خريطة القرآن" subtitle="رحلة مرئية في كتاب الله" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">

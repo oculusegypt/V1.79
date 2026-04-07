@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { StandardHeader } from "@/components/header/StandardHeader";
+import { useSettings } from "@/context/SettingsContext";
 import QuranRead from "./read";
 import QuranListen from "./listen";
 import QuranMemorize from "./memorize";
@@ -97,13 +98,19 @@ const sections = [
 
 export default function QuranIndex() {
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
+
+  const bgClass = isDark 
+    ? "bg-gradient-to-br from-slate-900 to-gray-800" 
+    : "bg-gradient-to-br from-slate-50 to-gray-100";
 
   if (selectedSection) {
     const section = sections.find(s => s.id === selectedSection);
     if (section) {
       const Component = section.component;
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
+        <div className={`min-h-screen ${bgClass}`}>
           <StandardHeader
             title={section.title}
             subtitle={section.description}
@@ -119,7 +126,7 @@ export default function QuranIndex() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900 dark:to-gray-800">
+    <div className={`min-h-screen ${bgClass}`}>
       <StandardHeader
         title="القرآن الكريم"
         subtitle="تطبيق شامل للقرآن الكريم وعلومه"

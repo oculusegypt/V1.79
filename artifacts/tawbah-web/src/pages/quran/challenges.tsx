@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Trophy, Star, Check, BookOpen, Clock, ChevronRight, Lock } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -283,8 +284,11 @@ export default function QuranChallengesPage() {
     .sort((a, b) => b.points - a.points)
     .map((l, i) => ({ ...l, rank: i + 1 }));
 
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
+
   return (
-    <div className="min-h-screen pb-24" dir="rtl">
+    <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="تحديات القرآن" subtitle="تحدَّ نفسك وتقدّم روحياً" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">

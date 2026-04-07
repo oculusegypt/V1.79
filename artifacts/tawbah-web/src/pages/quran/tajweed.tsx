@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, ChevronDown, ChevronUp, Volume2, BookOpen } from "lucide-react";
+import { Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { useSettings } from "@/context/SettingsContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -259,13 +260,15 @@ function RuleCard({ rule }: { rule: TajweedRule }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function QuranTajweedPage() {
+  const { theme } = useSettings();
+  const isDark = theme === "dark";
   const [activeCategory, setActiveCategory] = useState("الكل");
 
   const filtered =
     activeCategory === "الكل" ? RULES : RULES.filter((r) => r.category === activeCategory);
 
   return (
-    <div className="min-h-screen pb-24" dir="rtl">
+    <div className={`min-h-screen pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="علم التجويد" subtitle="إتقان تلاوة القرآن الكريم" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">

@@ -314,21 +314,22 @@ function TafsirReader({ surah, reciterId, onBack }: { surah: Surah; reciterId: s
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function QuranTafsirPage() {
-  const { quranReciterId } = useSettings();
+  const { quranReciterId, theme } = useSettings();
+  const isDark = theme === "dark";
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
   const [search, setSearch] = useState("");
   const filtered = SURAHS.filter(s => s.name.includes(search) || s.nameEn.toLowerCase().includes(search.toLowerCase()));
 
   if (selectedSurah) {
     return (
-      <div className="min-h-screen flex flex-col pb-20">
+      <div className={`min-h-screen flex flex-col pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`}>
         <TafsirReader surah={selectedSurah} reciterId={quranReciterId} onBack={() => setSelectedSurah(null)} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20" dir="rtl">
+    <div className={`min-h-screen pb-20 ${isDark ? "bg-slate-900" : "bg-slate-50"}`} dir="rtl">
       <PageHeader title="التفسير التفاعلي" subtitle="انقر على أي آية للتفسير" />
 
       <div className="px-4 pt-4 flex flex-col gap-4">
