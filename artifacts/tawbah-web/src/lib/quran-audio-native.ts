@@ -1,5 +1,6 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNativeApp, getApiBase } from "@/lib/api-base";
+import { getSurahName } from "@/lib/surah-name-map";
 
 const AUDIO_ROOT_DIR = "Tawbah-Quran";
 const AUDIO_DIR = `${AUDIO_ROOT_DIR}/audio`;
@@ -246,12 +247,18 @@ export async function getCachedAudioCount(): Promise<number> {
         const surahList = surahDirs as unknown as Array<{ name: string; type: string }>;
         for (const surahDir of surahList) {
           if (surahDir.type !== "directory") continue;
+          const surahId = parseInt(surahDir.name, 10);
+          const surahName = getSurahName(surahId, 'en');
           const audioFiles = await Filesystem.readdir({
             path: `${AUDIO_DIR}/${dir.name}/${surahDir.name}`,
             directory: AUDIO_DIRECTORY,
           });
           const audioList = audioFiles as unknown as Array<{ name: string }>;
-          count += audioList.filter((f: { name: string }) => f.name.endsWith(".mp3")).length;
+          const fileCount = audioList.filter((f: { name: string }) => f.name.endsWith(".mp3")).length;
+          if (fileCount > 0) {
+            console.log(`[AudioCache] ${surahName} (${surahId}): ${fileCount} verses`);
+          }
+          count += fileCount;
         }
       }
     }

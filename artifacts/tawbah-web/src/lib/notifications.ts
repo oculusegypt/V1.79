@@ -440,10 +440,10 @@ export async function buildScheduledNotifications(
   };
 
   const sunPathAttachment = sunPathPercent == null
-    ? null
+    ? undefined
     : (() => {
         const url = buildSunPathCardPng(sunPathPercent, Date.now());
-        if (!url) return null;
+        if (!url) return undefined;
         return [{ id: "sunpath", url }];
       })();
 
@@ -470,6 +470,7 @@ export async function buildScheduledNotifications(
             : `(${timeLabel}) — ${p.body}${sunPathLine ? `\n${sunPathLine}` : ""}`,
           fireAt,
           url: p.url,
+          attachments: sunPathAttachment,
         });
       }
     }

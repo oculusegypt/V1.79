@@ -34,6 +34,7 @@ import {
 } from "@/lib/quran-audio";
 import { getCachedAudioUrlNative, preloadQuranVerseNative } from "@/lib/quran-audio-native";
 import { setAudioSrc } from "@/lib/native-audio";
+import { getSurahName } from "@/lib/surah-name-map";
 
 // ─── Audio helpers ─────────────────────────────────────────────────────────────
 
@@ -1641,7 +1642,7 @@ function SurahReaderSheet({
               className="font-bold text-base"
               style={{ fontFamily: "'Amiri Quran', serif", color: "#c8a84b" }}
             >
-              سورة {surah.name}
+              سورة {getSurahName(surah.id, 'ar')}
             </p>
             <p className="text-[10px] text-muted-foreground">
               {surah.ayahCount} آية · {surah.revelation} · الجزء {surah.juz}
@@ -2197,7 +2198,7 @@ function SurahBrowser({ onSelect }: { onSelect: (s: Surah) => void }) {
                     {surah.revelation}
                   </span>
                 </div>
-                <p className="font-bold text-sm leading-tight">{surah.name}</p>
+                <p className="font-bold text-sm leading-tight">{getSurahName(surah.id, 'ar')}</p>
                 <p className="text-[10px] text-muted-foreground">
                   {surah.ayahCount} آية · ج{surah.juz}
                 </p>

@@ -6,7 +6,8 @@ import { isNativeApp } from "@/lib/api-base";
 import { getCachedAudioUrl, preloadQuranVerseForCache, type QuranAudioSource } from "@/lib/quran-audio";
 import { getCachedAudioUrlNative, preloadQuranVerseNative } from "@/lib/quran-audio-native";
 import type { MessageSegment } from "../types";
-import { toGlobalAyah, reciterAudioUrl, getSurahName } from "../quran-helpers";
+import { toGlobalAyah, reciterAudioUrl } from "../quran-helpers";
+import { getSurahName } from "@/lib/surah-name-map";
 
 interface Props {
   seg: MessageSegment;
@@ -113,7 +114,7 @@ export function QuranCard({ seg, isActive, isPlaying, onEnded, onManualToggle, r
               {reciterName}
             </div>
             <div className="text-[13px] font-bold text-white leading-none">
-              سورة {getSurahName(seg.surah!)} — آية {seg.ayah}
+              سورة {getSurahName(seg.surah!, 'ar')} — آية {seg.ayah}
             </div>
           </div>
         </div>
